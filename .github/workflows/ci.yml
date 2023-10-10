@@ -26,6 +26,19 @@ jobs:
     - name: Setup CMake, Ninja and GCC
       uses: lukka/get-cmake@v3.21.1
 
+    # Check compiler versions
+    - name: Check GCC Version
+      if: matrix.os == 'ubuntu-latest'
+      run: g++ --version
+
+    - name: Check Clang Version
+      if: matrix.os == 'macos-latest'
+      run: clang++ --version
+
+    - name: Check MSVC Version
+      if: matrix.os == 'windows-latest'
+      run: cl
+
     # Additional setup for different architectures can be done here
 
     - name: Create build directory
