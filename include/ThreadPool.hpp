@@ -335,7 +335,7 @@ namespace ThreadPool{
                      *     return x + y;
                      * }
                      * 
-                     * ThreadPool::TaskBuilder taskBuilder(/*...some initialization params...*);
+                     * ThreadPool::TaskBuilder taskBuilder(//...some initialization params...);
                      * auto task = taskBuilder.createTask(add, 5, 3);
                      * 
                      * task();  // Invokes the encapsulated function, i.e., add(5, 3)
