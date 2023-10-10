@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <thread>
+#include <climits>
 #include "PriorityQueue.hpp"
 
 class PriorityQueueTest : public ::testing::Test {
