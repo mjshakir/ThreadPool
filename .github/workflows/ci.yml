@@ -37,7 +37,10 @@ jobs:
 
     - name: Check MSVC Version
       if: matrix.os == 'windows-latest'
-      run: cl
+      run: |
+        echo "MSVC Version:"
+        "C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VC\Auxiliary\Build\vcvars64.bat" && cl
+    
 
     # Additional setup for different architectures can be done here
 
