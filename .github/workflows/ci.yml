@@ -8,6 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
+        arch: [x86, arm]
         include:
           - os: ubuntu-latest
             compiler: g++-10
@@ -22,21 +23,16 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install g++-10 (Ubuntu)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt update
-        sudo apt install -y g++-10
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 100 --slave /usr/bin/g++ g++ /usr/bin/g++-10
-
     - name: Setup CMake, Ninja and GCC
       uses: lukka/get-cmake@v3.21.1
+
+    # Additional setup for different architectures can be done here
 
     - name: Create build directory
       run: mkdir build
 
     - name: Configure CMake
-      run: cmake -S . -B build
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
       run: cmake --build build
