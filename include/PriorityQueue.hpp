@@ -166,6 +166,7 @@ namespace ThreadPool{
              * @warning This only affects capacity, not the actual number of elements in 
              *          the queue. The size of the queue remains unchanged.
              */
+            template<typename U = Container, std::enable_if_t<std::is_same_v<U, std::vector<T>>, int> = 0>
             void reserve(const size_t& size) {
                 reserve_m_data(size);
             }// endvoid reserve(const size_t& size)
@@ -383,31 +384,31 @@ namespace ThreadPool{
             void remove(void) = delete;
             //--------------------------
             /**
-             * @brief Removes all tasks that are done from the priority queue.
-             * 
-             * This function provides a mechanism to purge finished tasks from the 
-             * priority queue in a thread-safe manner. The definition of a "finished task"
-             * is determined by whether the task type has a `is_done()` or `done()` member function.
-             * 
-             * @tparam U The task type. Defaults to `T`.
-             * 
-             * @example
-             * 
-             * // Suppose TaskType is the type stored in the PriorityQueue and it has a `is_done()` member function.
-             * ThreadPool::PriorityQueue<TaskType> queue;
-             * // ... [populate queue]
-             * 
-             * queue.remove();  // Will invoke appropriate specialization to remove "done" tasks.
-             * 
-             * @note This function internally determines which version (based on the presence 
-             *       of `is_done()` or `done()`) to call and removes tasks accordingly.
-             * 
-             * @note This function is thread-safe and can be invoked concurrently by 
-             *       multiple threads without external synchronization.
-             * 
-             * @warning If the task type `U` doesn't have either of the `is_done()` or `done()` 
-             *          member functions, invoking this function will result in a compilation error.
-             */
+            * @brief Removes all tasks that are done from the priority queue.
+            * 
+            * This function provides a mechanism to purge finished tasks from the 
+            * priority queue in a thread-safe manner. The definition of a "finished task"
+            * is determined by whether the task type has a `is_done()` or `done()` member function.
+            * 
+            * @tparam U The task type. Defaults to `T`.
+            * 
+            * @example
+            * 
+            * // Suppose TaskType is the type stored in the PriorityQueue and it has a `is_done()` member function.
+            * ThreadPool::PriorityQueue<TaskType> queue;
+            * // ... [populate queue]
+            * 
+            * queue.remove();  // Will invoke appropriate specialization to remove "done" tasks.
+            * 
+            * @note This function internally determines which version (based on the presence 
+            *       of `is_done()` or `done()`) to call and removes tasks accordingly.
+            * 
+            * @note This function is thread-safe and can be invoked concurrently by 
+            *       multiple threads without external synchronization.
+            * 
+            * @warning If the task type `U` doesn't have either of the `is_done()` or `done()` 
+            *          member functions, invoking this function will result in a compilation error.
+            */
             template<typename U = T, std::enable_if_t<has_either_is_done_or_done<U>::value, int> = 0>
             void remove(void) {
                 remove_tasks<has_is_done<U>::value, has_done<U>::value>();
@@ -449,6 +450,7 @@ namespace ThreadPool{
                 return m_data.empty();
             }// end bool is_empty() const
             //--------------------------
+            template<typename U = Container, std::enable_if_t<std::is_same_v<U, std::vector<T>>, int> = 0>
             void reserve_m_data(const size_t& size) {
                 //--------------------------
                 std::lock_guard<std::mutex> lock(m_mutex);
@@ -543,7 +545,7 @@ namespace ThreadPool{
                 //--------------------------
             }// end void remove_tasks(void)
             //--------------------------
-            template<bool UseIsDone, bool UseDone, typename std::enable_if_t<!UseIsDone && UseDone, int> = 0>
+            template<bool UseIsDone, bool UseDone, typename std::enable_if_t<!UseIsDone and UseDone, int> = 0>
             void remove_tasks(void) {
                 //--------------------------
                 std::lock_guard<std::mutex> lock(m_mutex);
