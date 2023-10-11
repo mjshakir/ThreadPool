@@ -40,15 +40,6 @@ set(SOURCES
 # Add library target
 add_library(${PROJECT_NAME} ${SOURCES})
 
-# Compiler and Linker Options
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
-    # Sanitizer options for Debug configuration
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
-        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-    endif()
-endif()
 
 # Include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -62,9 +53,9 @@ add_executable(${PROJECT_NAME}_example example/main.cpp)
 target_link_libraries(${PROJECT_NAME}_example PRIVATE ${PROJECT_NAME})
 
 # Compiler and Linker Options
-if(CMAKE_BUILD_TYPE STREQUAL "release")
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
     target_compile_options(${PROJECT_NAME} PRIVATE -O3)
-elseif(CMAKE_BUILD_TYPE STREQUAL "debug")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
     # Sanitizer options for Debug configuration
     if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
