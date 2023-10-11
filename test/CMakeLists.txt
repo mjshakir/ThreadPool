@@ -20,7 +20,8 @@ macro(package_add_test TESTNAME)
 endmacro()
 
 package_add_test(PriorityQueueTest PriorityQueueTest.cpp)
+package_add_test(PriorityQueueDequeTest PriorityQueueDequeTest.cpp)
 package_add_test(PriorityQueueStructTest PriorityQueueStructTest.cpp)
+package_add_test(PriorityQueueDegueStructTest PriorityQueueDegueStructTest.cpp)
 package_add_test(ThreadTaskTest ThreadTaskTest.cpp)
 package_add_test(ThreadPoolTest ThreadPoolTest.cpp)
-
