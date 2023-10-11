@@ -17,6 +17,7 @@ macro(package_add_test TESTNAME)
     add_test(NAME ${TESTNAME} COMMAND ${TESTNAME})
     set_target_properties(${TESTNAME} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/testBin)
+    add_dependencies(${TESTNAME} ${PROJECT_NAME})
 endmacro()
 
 package_add_test(PriorityQueueTest PriorityQueueTest.cpp)
