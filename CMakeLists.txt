@@ -7,7 +7,6 @@ project(${PROJECT_NAME} VERSION 1.0.0 LANGUAGES CXX)
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # Print out the build type
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
@@ -41,16 +40,15 @@ set(SOURCES
 # Add library target
 add_library(${PROJECT_NAME} ${SOURCES})
 
-# Set compiler options based on build type
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0")
+# Compiler and Linker Options
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
+    # Sanitizer options for Debug configuration
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
+        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+    endif()
 endif()
-
-# Sanitizer options for Debug configuration
-target_compile_options(${PROJECT_NAME} PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
-target_link_options(${PROJECT_NAME} PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
 
 # Include directories for the target
 target_include_directories(${PROJECT_NAME}
@@ -63,9 +61,18 @@ target_include_directories(${PROJECT_NAME}
 add_executable(${PROJECT_NAME}_example example/main.cpp)
 target_link_libraries(${PROJECT_NAME}_example PRIVATE ${PROJECT_NAME})
 
-# Sanitizer options for Debug configuration for example
-target_compile_options(${PROJECT_NAME}_example PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
-target_link_options(${PROJECT_NAME}_example PUBLIC $<$<CONFIG:Debug>:-fsanitize=address>)
+# Compiler and Linker Options
+if(CMAKE_BUILD_TYPE STREQUAL "release")
+    target_compile_options(${PROJECT_NAME} PRIVATE -O3)
+elseif(CMAKE_BUILD_TYPE STREQUAL "debug")
+    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
+    # Sanitizer options for Debug configuration
+    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
+        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+    endif()
+endif()
+
 
 # Enable testing and add the test directory if this is the main project
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
@@ -73,7 +80,7 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(test)
 endif()
 
-# Installation rules
+# Installation and Export Settings
 include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
     EXPORT ${PROJECT_NAME}Targets
@@ -82,6 +89,21 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 install(DIRECTORY ${INCLUDE_DIR}/${PROJECT_NAME} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# Doxygen (only if it's the main project)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    find_package(Doxygen)
+    if(Doxygen_FOUND)
+        set(DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in)
+        set(DOXYGEN_OUT ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile)
+        configure_file(${DOXYGEN_IN} ${DOXYGEN_OUT} @ONLY)
+        add_custom_target(docs
+            COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+            COMMENT "Generating documentation with Doxygen"
+            VERBATIM)
+    endif()
+endif()
 
 # Export the targets to a script
 install(EXPORT ${PROJECT_NAME}Targets
