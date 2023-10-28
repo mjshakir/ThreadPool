@@ -8,7 +8,7 @@ class ThreadPoolTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Setup necessary resources before each test
-        threadPool = std::make_unique<ThreadPool::ThreadPool<true>>(10); // Assume 4 as default thread count
+        threadPool = std::make_unique<ThreadPool::ThreadPool<false>>(10); // Assume 4 as default thread count
     }
     
     void TearDown() override {
@@ -16,7 +16,7 @@ protected:
         threadPool.reset(); // stop() will be called in the destructor of ThreadPool
     }
     
-    std::unique_ptr<ThreadPool::ThreadPool<true>> threadPool;
+    std::unique_ptr<ThreadPool::ThreadPool<false>> threadPool;
 };
 
 
@@ -25,11 +25,11 @@ TEST_F(ThreadPoolTest, TaskPrioritizationWorksCorrectly) {
     std::mutex mtx;
 
     for (int i = 0; i < 10; ++i) {
-        threadPool->queue(true, 
+        threadPool->queue(
             [&executionOrder, &mtx](int value) {
                 std::unique_lock lock(mtx); // Protect access to shared vector
                 executionOrder.push_back(value);
-            }, i).set_priority(10 - i); // Assuming lower number means higher priority
+            }, i); // Assuming lower number means higher priority
     }
 
     // Possibly wait for a while or use some synchronization mechanism to ensure all tasks are completed
@@ -47,10 +47,9 @@ TEST_F(ThreadPoolTest, TaskPrioritizationWorksCorrectly) {
 TEST_F(ThreadPoolTest, ExecuteTasksCorrectly) {
     std::vector<std::future<int>> results;
     for (int i = 0; i < 10; ++i) {
-        auto taskBuilder = threadPool->queue(true, [](int value) {return value * value;}, i);
+        auto taskBuilder = threadPool->queue([](int value) {return value * value;}, i);
         try {
-            auto future = taskBuilder.get_future();
-            results.emplace_back(std::move(future));
+            results.emplace_back(std::move(taskBuilder));
         } catch (const std::future_error& e) {
             FAIL() << "Failed to get future for i = " << i << " with error: " << e.what();
         }
@@ -67,15 +66,15 @@ TEST_F(ThreadPoolTest, ExecuteTasksCorrectly) {
 
 // Test to ensure that all threads end correctly when ThreadPool is destroyed
 TEST_F(ThreadPoolTest, ThreadsEndCorrectlyOnDestruction) {
-    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<true>>(2);
+    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<false>>(2);
     
     // Use promises to get notified when the tasks start
     std::promise<void> task1Started, task2Started;
     auto fut1 = task1Started.get_future();
     auto fut2 = task2Started.get_future();
     
-    anotherThreadPool->queue(true, [&] { task1Started.set_value(); });
-    anotherThreadPool->queue(true, [&] { task2Started.set_value(); });
+    anotherThreadPool->queue([&] { task1Started.set_value(); });
+    anotherThreadPool->queue([&] { task2Started.set_value(); });
     
     fut1.wait();
     fut2.wait();
@@ -91,7 +90,7 @@ TEST_F(ThreadPoolTest, StressTest) {
     std::atomic_int counter{0};
     
     for (uint16_t i = 0; i < taskCount; ++i) {
-        threadPool->queue(true, [&counter] { counter++; });
+        threadPool->queue([&counter] { counter++; });
     }
     
     std::this_thread::sleep_for(std::chrono::seconds(5)); // Assume 5 seconds is enough
@@ -104,16 +103,15 @@ TEST_F(ThreadPoolTest, CombinedStressTest) {
     std::vector<std::future<int>> results;
     
     for (uint16_t i = 0; i < taskCount; ++i) {
-        auto taskBuilder = threadPool->queue(true, [&counter, i] { 
+        auto taskBuilder = threadPool->queue([&counter, i] { 
             counter++; 
             return i * i; 
         });
         try {
-            auto future = taskBuilder.get_future();
-            if (!future.valid()) {
+            if (!taskBuilder.valid()) {
                 FAIL() << "Invalid future for i = " << i;
             } else {
-                results.emplace_back(std::move(future));
+                results.emplace_back(std::move(taskBuilder));
             }
         } catch (const std::future_error& e) {
             FAIL() << "Failed to get future for i = " << i << " with error: " << e.what();
@@ -143,17 +141,16 @@ TEST_F(ThreadPoolTest, HandleVaryingExecutionTimes) {
 
     // Queue tasks with varying execution times
     for (int i = 0; i < taskCount; ++i) {
-        auto taskBuilder = threadPool->queue(true, [i]() {
+        auto taskBuilder = threadPool->queue([i]() {
             std::this_thread::sleep_for(std::chrono::nanoseconds(100 * (taskCount - i))); // Longer delay for earlier tasks
             return i * i;
         });
         expectedResults[i] = i * i;
         try {
-            auto future = taskBuilder.get_future();
-            if (!future.valid()) {
+            if (!taskBuilder.valid()) {
                 FAIL() << "Invalid future for i = " << i;
             } else {
-                futures.emplace_back(std::move(future));
+                futures.emplace_back(std::move(taskBuilder));
             }
         } catch (const std::future_error& e) {
             FAIL() << "Failed to get future for i = " << i << " with error: " << e.what();
@@ -179,7 +176,7 @@ TEST_F(ThreadPoolTest, AllThreadsRunningWithoutGet) {
     std::atomic_size_t tasksCompleted = 0;
 
     for (size_t i = 0; i < taskCount; ++i) {
-        threadPool->queue(true, [i, &mtx, &threadIds, &tasksCompleted]() {
+        threadPool->queue([i, &mtx, &threadIds, &tasksCompleted]() {
             std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Fixing time for better synchronization
             {
                 std::lock_guard lock(mtx);
