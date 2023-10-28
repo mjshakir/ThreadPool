@@ -1,7 +1,5 @@
 # ThreadPool
 
-# ThreadPool
-
 ThreadPool is a high-performance C++ library designed for efficient parallel execution of tasks, utilizing a pool of managed threads. Under the hood, it leverages the power of `std::jthread` introduced in C++20, which automatically manages the life cycle of threads, saving developers from the intricacies of explicit thread management.
 
 This library stands out by offering flexibility in task scheduling through either a standard Deque or a custom-implemented PriorityQueue. This feature provides refined control over task execution order, allowing priority-based task handling. Whether you are dealing with simple parallel tasks or need advanced control over task execution order, ThreadPool can cater to those requirements with ease and efficiency.
