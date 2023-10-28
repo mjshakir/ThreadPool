@@ -1,14 +1,22 @@
 # ThreadPool
 
-## Overview
-`ThreadPool` is a high-performance C++ library that enables parallel execution of tasks using a pool of managed threads. The library offers flexibility through its support for task scheduling via a standard `Deque` or a custom-implemented `PriorityQueue`, allowing for more refined control over task execution order based on priority.
+# ThreadPool
 
-## Features
+ThreadPool is a high-performance C++ library designed for efficient parallel execution of tasks, utilizing a pool of managed threads. Under the hood, it leverages the power of `std::jthread` introduced in C++20, which automatically manages the life cycle of threads, saving developers from the intricacies of explicit thread management.
+
+This library stands out by offering flexibility in task scheduling through either a standard Deque or a custom-implemented PriorityQueue. This feature provides refined control over task execution order, allowing priority-based task handling. Whether you are dealing with simple parallel tasks or need advanced control over task execution order, ThreadPool can cater to those requirements with ease and efficiency.
+
+## Key Features
+
+- Modern C++ implementation utilizing `std::jthread` for automatic thread management and reduced overhead in resource handling.
+- Flexible task scheduling mechanisms including standard Deque or priority-based PriorityQueue, enabling refined control over task execution based on user-defined priorities.
+- Simplified integration with existing CMake projects, making it straightforward to include in your project.
 - Easy management of a pool of threads.
 - Task execution using either a `Deque` or a `PriorityQueue`.
 - Customizable task prioritization (when using the `PriorityQueue`).
 - Support for C++20.
 - Easy integration with CMake projects.
+- Options for both shared and static library build configurations to suit various application needs.
 
 ## Prerequisites
 - CMake 3.14 or higher
@@ -113,7 +121,7 @@ int main() {
     ThreadPool pool(4);
 
     // Enqueue a task into the pool using a lambda function.
-    auto result = pool.enqueue([]() -> int {
+    auto result = pool.queue([]() -> int {
         // Your task logic...
         return 42;
     });
