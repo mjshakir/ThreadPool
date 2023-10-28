@@ -6,10 +6,9 @@
 #include <iostream>
 #include <condition_variable>
 #include <thread>
-#include <atomic>
-#include <tuple>
 #include <future>
-#include <variant>
+#include <chrono>
+#include <concepts>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -28,20 +27,36 @@ namespace ThreadPool{
      * The ThreadPool class handles the creation, management, and destruction of threads. 
      * It also provides functionality to queue tasks for execution by the worker threads.
      */
+    template <bool use_priority_queue = false>
     class ThreadPool {
         //-------------------------------------------------------------
         protected:
             //--------------------------------------------------------------
             /**
              * @class TaskBuilder
-             * @brief Utility class to construct and manage tasks for the thread pool.
+             * @brief Builds and manages the life-cycle of a task to be executed by a ThreadPool with priority queue support.
+             * 
+             * @details The TaskBuilder class is responsible for creating tasks, setting their properties like priority and retries,
+             * and managing their submission to the thread pool. Tasks can either be auto-submitted upon construction or manually
+             * submitted later. This class is specifically designed to work when the `use_priority_queue` is enabled.
              *
-             * This class provides a fluent interface for creating, configuring, and submitting tasks to the ThreadPool.
-             * @tparam F The function type for the task.
-             * @tparam Args The argument types for the task function.
+             * @note This class should not be used directly if `use_priority_queue` is disabled.
+             * 
+             * @tparam F Type of the callable (like function, lambda, etc.)
+             * @tparam Args Variadic types of the arguments to be passed to the callable.
+             *
+             * @example:
+             * @code
+             * ThreadPool pool; // ThreadPool must be instantiated with priority queue support enabled.
+             * auto task = pool.enqueue(true, [](int a, int b) { return a + b; }, 2, 3);
+             * task.set_priority(10).set_retries(3);
+             * auto result = task.get();  // Will retrieve the result after task execution.
+             * @endcode
              */
-            template <typename F, typename... Args>
+            template <typename F, typename... Args> requires use_priority_queue
             class TaskBuilder {
+                //--------------------------------------------------------------
+                // static_assert(!use_priority_queue, "TaskBuilder can only be used with priority queues disable.");
                 //--------------------------------------------------------------
                 private:
                     using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -54,7 +69,7 @@ namespace ThreadPool{
                     /**
                      * @brief Constructs a TaskBuilder object.
                      *
-                     * This constructor creates a TaskBuilder instance for enqueuing tasks into a ThreadPool.
+                     * @details This constructor creates a TaskBuilder instance for enqueuing tasks into a ThreadPool.
                      * If the provided task has a return type, its future is made available for retrieval.
                      * Optionally, the task can be submitted automatically to the ThreadPool upon creation.
                      *
@@ -103,7 +118,7 @@ namespace ThreadPool{
                     /**
                      * @brief Destructor for the TaskBuilder class.
                      *
-                     * Ensures that the task is submitted to the ThreadPool upon destruction if it hasn't been submitted yet.
+                     * @details Ensures that the task is submitted to the ThreadPool upon destruction if it hasn't been submitted yet.
                      * This is especially useful to guarantee that all tasks are enqueued when a TaskBuilder object goes out of scope.
                      *
                      * @note The destructor will not throw exceptions even if the submission fails, as exceptions should not be thrown from destructors.
@@ -127,7 +142,7 @@ namespace ThreadPool{
                     /**
                      * @brief Sets the priority for the task encapsulated by this TaskBuilder instance.
                      * 
-                     * This method allows the user to specify a priority for the task. Tasks with higher priority values
+                     * @details This method allows the user to specify a priority for the task. Tasks with higher priority values
                      * may be processed before tasks with lower priority, depending on the ThreadPool's implementation and configuration.
                      *
                      * @param p The priority value to set for the task. Expected to be a non-negative integer, with higher values
@@ -153,7 +168,7 @@ namespace ThreadPool{
                     /**
                      * @brief Sets the retry count for the task encapsulated by this TaskBuilder instance.
                      * 
-                     * This method allows the user to specify how many times the ThreadPool should attempt 
+                     * @details This method allows the user to specify how many times the ThreadPool should attempt 
                      * to retry the task in case of failures or errors during its execution.
                      *
                      * @param r The number of retries to set for the task. Expected to be a non-negative integer.
@@ -180,7 +195,7 @@ namespace ThreadPool{
                     /**
                      * @brief Submits the task encapsulated by this TaskBuilder to the associated ThreadPool for execution.
                      * 
-                     * If the task has already been submitted (or automatically submitted upon TaskBuilder creation),
+                     * @details If the task has already been submitted (or automatically submitted upon TaskBuilder creation),
                      * this method does nothing. Otherwise, it places the task into the ThreadPool's queue with the 
                      * specified priority and retry count. Once submitted, the task will be picked up by one of 
                      * the worker threads in the ThreadPool and executed.
@@ -214,7 +229,7 @@ namespace ThreadPool{
                     /**
                      * @brief This version of the `get_future` method is explicitly deleted for tasks with a void return type.
                      * 
-                     * Tasks with a void return type do not have an associated future because there's no result to retrieve.
+                     * @details Tasks with a void return type do not have an associated future because there's no result to retrieve.
                      * Attempting to call this method for such tasks will result in a compilation error.
                      * 
                      * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
@@ -227,7 +242,7 @@ namespace ThreadPool{
                     /**
                      * @brief Retrieves the future associated with this task, allowing the caller to get the result once it's available.
                      * 
-                     * This method provides access to the future associated with the task encapsulated by this TaskBuilder. This future 
+                     * @details This method provides access to the future associated with the task encapsulated by this TaskBuilder. This future 
                      * can be used to retrieve the result of the task once it has been executed by a thread in the ThreadPool.
                      *
                      * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
@@ -263,7 +278,7 @@ namespace ThreadPool{
                     /**
                      * @brief This version of the `get` method is explicitly deleted for tasks with a void return type.
                      * 
-                     * Tasks with a void return type do not produce a result. Thus, calling `get` for such tasks is not meaningful.
+                     * @details Tasks with a void return type do not produce a result. Thus, calling `get` for such tasks is not meaningful.
                      * Attempting to call this method for tasks with a void return type will result in a compilation error.
                      * 
                      * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
@@ -276,7 +291,7 @@ namespace ThreadPool{
                     /**
                      * @brief Retrieves the result of the task once it has been computed by the ThreadPool.
                      * 
-                     * This method allows the caller to obtain the result of the task encapsulated by this TaskBuilder, 
+                     * @details This method allows the caller to obtain the result of the task encapsulated by this TaskBuilder, 
                      * after it has been executed by a thread in the ThreadPool. This method effectively calls the associated
                      * future's `get` method to obtain the result.
                      * 
@@ -313,7 +328,7 @@ namespace ThreadPool{
                     /**
                      * @brief Constructs a `std::packaged_task` based on the provided function and its arguments.
                      * 
-                     * The `createTask` method is responsible for creating a `std::packaged_task` that encapsulates the 
+                     * @details The `createTask` method is responsible for creating a `std::packaged_task` that encapsulates the 
                      * provided function and its arguments. This packaged task, when executed, will invoke the function with 
                      * the given arguments.
                      * 
@@ -381,7 +396,7 @@ namespace ThreadPool{
             /**
              * @brief Constructs a ThreadPool with the specified number of worker threads.
              * 
-             * The constructor initializes a ThreadPool with a specified number of worker threads.
+             * @details The constructor initializes a ThreadPool with a specified number of worker threads.
              * The actual number of worker threads will be clamped between the system's lower
              * threshold and either the upper threshold or the number of hardware threads available,
              * whichever is smaller.
@@ -413,7 +428,20 @@ namespace ThreadPool{
              * In cases where the provided number is greater than the number of hardware threads or less than the lower threshold,
              * it will be adjusted accordingly.
              */
-            explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()));
+            explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
+                            :   m_upperThreshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
+                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
+                                m_adjustmentThread([this](const std::stop_token& stoken){this->adjustmentThreadFunction(stoken);}){
+                //--------------------------
+                // auto _threads_number = std::max(std::min(m_upperThreshold, numThreads), m_lowerThreshold);
+                auto _threads_number = std::clamp( numThreads, m_lowerThreshold, m_upperThreshold);
+                create_task(_threads_number);
+                //--------------------------
+                if constexpr (use_priority_queue){
+                    m_tasks.reserve(numThreads);
+                }//end if constexpr (use_priority_queue)
+                //--------------------------
+            }// end ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
             //--------------------------
             ThreadPool(const ThreadPool&)            = delete;
             ThreadPool& operator=(const ThreadPool&) = delete;
@@ -421,12 +449,16 @@ namespace ThreadPool{
             ThreadPool(ThreadPool&&)                 = delete;
             ThreadPool& operator=(ThreadPool&&)      = delete;
             //--------------------------
-            ~ThreadPool(void);
+            ~ThreadPool(void){
+                //--------------------------
+                stop();
+                //--------------------------
+            }// end ~ThreadPool(void) 
             //--------------------------
              /**
              * @brief Retrieves the number of active worker threads in the thread pool.
              * 
-             * This function provides a safe way to query the number of active worker threads
+             * @details This function provides a safe way to query the number of active worker threads
              * currently managed by the ThreadPool instance. It internally acquires a lock to ensure 
              * thread safety while accessing shared resources.
              *
@@ -450,12 +482,16 @@ namespace ThreadPool{
              * }
              * @endcode
              */
-            size_t threads_size(void) const;
+            size_t threads_size(void) const{
+                //--------------------------
+                return thread_Workers_size();
+                //--------------------------
+            }// end size_t ThreadPool::ThreadPool::threads_size() const
             //--------------------------
             /**
              * @brief Retrieves the current number of active tasks in the ThreadPool.
              * 
-             * The `active_tasks_size` function returns the number of tasks that are currently
+             * @details The `active_tasks_size` function returns the number of tasks that are currently
              * in the queue waiting to be executed by the worker threads of the ThreadPool.
              * 
              * @return size_t The number of tasks currently in the ThreadPool's queue.
@@ -482,63 +518,312 @@ namespace ThreadPool{
              * @note This function only returns the number of tasks that are in the queue and does
              * not account for tasks currently being executed by the worker threads.
              */
-            size_t queued_size(void) const;
-            //--------------------------
-            std::tuple<size_t, size_t, size_t> status(void);
-            //--------------------------
-            void status_disply(void);
+            size_t queued_size(void) const{
+                //--------------------------
+                return active_tasks_size();
+                //--------------------------
+            }// end size_t ThreadPool::ThreadPool::queued_size() const
             //--------------------------
             /**
-             * @brief Queues a task for execution in the ThreadPool.
+             * @brief Enqueues a task with priority and retry settings by returning a TaskBuilder object.
+             *
+             * @details This method creates a TaskBuilder instance that allows the caller to set additional
+             * properties for the task such as priority and number of retries. This overload of `enqueue` is 
+             * specifically enabled when `use_priority_queue` is true, allowing tasks to be queued in a priority-based fashion.
+             *
+             * @note The task is not submitted to the thread pool until the TaskBuilder's `submit` method is called, or it is 
+             * auto-submitted based on the `auto_submit` parameter.
+             *
+             * @param auto_submit Automatically submits the task for execution if set to true.
              * 
-             * Creates a TaskBuilder instance for the provided task function and its arguments.
-             * The task is then queued for execution in the ThreadPool.
+             * @tparam F Type of the callable to be executed.
+             * @tparam Args Variadic template for the arguments list of the callable.
              * 
-             * @tparam F Function type of the task.
-             * @tparam Args Parameter pack for the function arguments.
+             * @return TaskBuilder<F, Args...> A builder object for setting task properties and submitting the task.
              * 
-             * @param auto_submit Automatically submits the task to the thread pool if set to true.
-             * @param f Function representing the task.
-             * @param args Arguments to be passed to the task function.
-             * 
-             * @return TaskBuilder An instance of TaskBuilder that allows further configuration 
-             *                     and management of the task.
-             * 
-             * @example
-             * ThreadPool pool(4);
-             * auto task = pool.queue(true, []() {
-             *     // task code here...
-             * });
+             * @example:
+             * @code
+             * ThreadPool pool; // ThreadPool must be instantiated with priority queue support enabled.
+             * auto task = pool.queue(true, [](int a, int b) { return a + b; }, 2, 3);
+             * task.set_priority(5).set_retries(2); // Optional: set priority and retries.
+             * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
+             * @endcode
+             * @code
+             * ThreadPool pool; // ThreadPool must be instantiated with priority queue support enabled.
+             * auto task = pool.queue(true, [](int a, int b) { return a + b; }, 2, 3).set_priority(5).set_retries(2); // Optional: set priority and retries.
+             * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
+             * @endcode
              */
             template <class F, class... Args>
-            auto queue(bool auto_submit, F&& f, Args&&... args){
+            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
                 //--------------------------
-                return enqueue<F, Args...>(auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
+                return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
+                //--------------------------
+            }// end TaskBuilder queue(F&& f, Args&&... args)// end TaskBuilder queue(F&& f, Args&&... args)
+            //--------------------------
+            /**
+             * @brief Queue a new task in the thread pool.
+             *
+             * @details This version of the `queue` function template is enabled only when
+             * the `use_priority_queue` is false and the return type of the callable is not void.
+             * It creates a task from the provided callable object (like a function, lambda expression,
+             * bind expression, or another function object) and its arguments, then enqueues this task
+             * for execution in the thread pool. The function returns a future representing the
+             * asynchronous execution of the task.
+             *
+             *
+             * @tparam F Type of the callable to be executed.
+             * @tparam Args Variadic template for the arguments list of the callable.
+             * @return std::future<std::invoke_result_t<F, Args...>> A future object representing the asynchronous execution of the callable.
+             * 
+             * @example
+             * @code
+             * ThreadPool pool;
+             * auto future = pool.enqueue([](int a, int b) { return a + b; }, 2, 3);
+             * auto result = future.get();  // result will hold the sum 5 after the task completes
+             * @endcode
+             */
+            template <class F, class... Args>
+            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            queue(F&& f, Args&&... args){
+                //--------------------------
+                return enqueue(std::forward<F>(f), std::forward<Args>(args)...);
+                //--------------------------
+            }// end TaskBuilder queue(F&& f, Args&&... args)
+            //--------------------------
+            /**
+             * @brief Queue a new task in the thread pool.
+             *
+             * @details This version of the `queue` function template is enabled only when
+             * the `use_priority_queue` is false and the return type of the callable is void.
+             * It creates a task from the provided callable object and its arguments, then enqueues this
+             * task for execution in the thread pool. Unlike its counterpart which handles non-void callables,
+             * this function does not return any future, as there is no return value from the callable.
+             *
+             * @tparam F Type of the callable to be executed.
+             * @tparam Args Variadic template for the arguments list of the callable.
+             * 
+             * @example:
+             * @code
+             * ThreadPool pool;
+             * pool.queue([]() { std::cout << "Task is being executed." << std::endl; });
+             * // The task is enqueued and will output to the console when executed.
+             * @endcode
+             */
+            template <class F, class... Args>
+            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
+                //--------------------------
+                enqueue(std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder queue(F&& f, Args&&... args)
             //--------------------------------------------------------------
         protected:
             //--------------------------------------------------------------
             template <class F, class... Args>
-            auto enqueue(bool auto_submit, F&& f, Args&&... args) {
+            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
-            void create_task(const size_t& numThreads);
+            template <class F, class... Args>
+            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            enqueue(F&& f, Args&&... args) {
+                //--------------------------
+                using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+                //--------------------------
+                auto taskFn = [f = std::forward<F>(f), ...capturedArgs = std::forward<Args>(args)]() mutable -> ReturnType {
+                    return std::invoke(f, std::forward<Args>(capturedArgs)...);
+                };
+                //--------------------------
+                auto packagedTaskPtr = std::make_shared<std::packaged_task<ReturnType()>>(std::move(taskFn));
+                //--------------------------
+                std::future<ReturnType> future = packagedTaskPtr->get_future();
+                //--------------------------
+                {// adding task
+                    std::lock_guard lock(m_mutex);
+                    m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
+                }// end adding task
+                //--------------------------
+                m_taskAvailableCondition.notify_one();
+                //--------------------------
+                return future;
+                //--------------------------
+            }// end TaskBuilder enqueue(F&& f, Args&&... args)            
+            //--------------------------------------------------------------
+            template <class F, class... Args>
+            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
+            enqueue(F&& f, Args&&... args) {
+                //--------------------------
+                using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+                //--------------------------
+                auto taskFn = [f = std::forward<F>(f), ...capturedArgs = std::forward<Args>(args)]() mutable -> ReturnType {
+                    return std::invoke(f, std::forward<Args>(capturedArgs)...);
+                };
+                //--------------------------
+                auto packagedTaskPtr = std::make_shared<std::packaged_task<ReturnType()>>(std::move(taskFn));
+                //--------------------------
+                {// adding task
+                    std::lock_guard lock(m_mutex);
+                    m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
+                }// end adding task
+                //--------------------------
+                m_taskAvailableCondition.notify_one();
+                //--------------------------
+            }// end enqueue(F&& f, Args&&... args)
+            //--------------------------------------------------------------
+            void create_task(const size_t& numThreads){
+                //--------------------------
+                m_workers.reserve(m_workers.size() + numThreads);
+                //--------------------------
+                for (size_t i = 0; i < numThreads; ++i) {
+                    //--------------------------
+                    m_workers.emplace_back([this](std::stop_token stoken) {
+                        this->workerFunction(stoken);
+                    });
+                    //--------------------------
+                }// end  for (size_t i = 0; i < numThreads; ++i)
+                //--------------------------
+            }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
             //--------------------------
-            void workerFunction(const std::stop_token& stoken);
+            void workerFunction(const std::stop_token& stoken){
+                //--------------------------
+                while (!stoken.stop_requested()) {
+                    //--------------------------
+                    using TaskType = std::conditional_t<use_priority_queue, ThreadTask, std::function<void()>>;
+                    TaskType task;
+                    //--------------------------
+                    {// being Append tasks 
+                        //--------------------------
+                        std::unique_lock lock(m_mutex);
+                        //--------------------------
+                        m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
+                        //--------------------------
+                        if (stoken.stop_requested() or m_tasks.empty()) {
+                            //--------------------------
+                            m_allStoppedCondition.notify_one();
+                            //--------------------------
+                            return;
+                            //--------------------------
+                        }// end if (stoken.stop_requested() and m_tasks.empty())
+                        //--------------------------
+                        if constexpr (use_priority_queue){
+                            task = std::move(m_tasks.pop_top().value());
+                        } else{
+                            task = std::move(m_tasks.front());
+                            m_tasks.pop_front();
+                        }// end if constexpr (use_priority_queue)
+                        //--------------------------
+                    }// end Append tasks
+                    //--------------------------
+                    try {
+                        //--------------------------
+                        if constexpr (use_priority_queue){
+                            static_cast<void>(task.try_execute());
+                        } else{
+                            task();
+                        }// end if constexpr (use_priority_queue)
+                        //--------------------------
+                    } // end try
+                    catch (const std::exception& e) {
+                        //--------------------------
+                        if constexpr (use_priority_queue){
+                            handleError(std::move(task), e.what());
+                        } else{
+                            handleError(e.what());
+                        }// end if constexpr (use_priority_queue)
+                        //--------------------------
+                    } // end catch (const std::exception& e)
+                    catch (...) {
+                        //--------------------------
+                        if constexpr (use_priority_queue){
+                            handleError(std::move(task), "Unknown error");
+                        } else{
+                            handleError("Unknown error");
+                        }// end if constexpr (use_priority_queue)
+                        //--------------------------
+                    }// end catch (...)
+                    //--------------------------
+                }// end while (!stoken.stop_requested())
+                //--------------------------
+            }// end void workerFunction(void)
             //--------------------------
-            void adjustWorkers(void);
+            void adjustWorkers(void){
+                //--------------------------
+                if constexpr (use_priority_queue){
+                    m_tasks.remove();
+                }// end if constexpr (use_priority_queue)
+                //--------------------------
+                const auto taskCount = active_tasks_size(), workerCount = thread_Workers_size();
+                //--------------------------
+                {
+                    //--------------------------
+                    std::unique_lock lock(m_mutex);
+                    //--------------------------
+                    // if (workerCount > taskCount) {
+                        //--------------------------
+                        // for (size_t i = 0; i < workerCount - taskCount and !m_workers.empty() and !m_adjustmentThread.get_stop_token().stop_requested(); ++i) {
+                            // m_workers.back().request_stop(); // Request each worker to stop
+                            // m_allStoppedCondition.wait(lock, [this] { return m_workers.back().get_stop_token().stop_requested();});
+                            //--------------------------
+                            // if(m_workers.back().joinable()){
+                                // m_workers.back().join();
+                                // m_workers.pop_back(); // Safely remove the stopped worker
+                            // }// end if(m_workers.back().joinable())
+                        // }
+                        //--------------------------
+                    // }// end if (workerCount > taskCount)
+                    //--------------------------
+                    if (taskCount > workerCount and workerCount < m_upperThreshold) {
+                        create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
+                    }
+                    //--------------------------
+                }
+                m_allStoppedCondition.notify_one();
+                //--------------------------
+            }// end void adjustWorkers(void)
             //--------------------------
-            void adjustmentThreadFunction(const std::stop_token& stoken);
+            void adjustmentThreadFunction(const std::stop_token& stoken){
+                //--------------------------
+                while (!stoken.stop_requested()) {
+                    //--------------------------
+                    std::this_thread::sleep_for(CHECK_INTERVAL);
+                    //--------------------------
+                    adjustWorkers();
+                    //--------------------------
+                }// end while (!stoken.stop_requested())
+                //--------------------------
+            }// end void adjustmentThreadFunction(const std::stop_token& stoken)
             //--------------------------
-            void stop(void);
+            void stop(void){
+                //--------------------------
+                {
+                    //--------------------------
+                    std::unique_lock lock(m_mutex);
+                    //--------------------------
+                    m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
+                    //--------------------------
+                    m_adjustmentThread.request_stop();
+                    //--------------------------
+                    for (auto &worker : m_workers) {
+                        worker.request_stop(); // request each worker to stop
+                    }// end for (auto &worker : m_workers)
+                }
+                //--------------------------
+                m_taskAvailableCondition.notify_all();
+                //--------------------------
+            }//end void stop(void)
             //--------------------------
-            void push_task(ThreadTask&& task);
+            template <bool U = use_priority_queue, typename = std::enable_if_t<U>>
+            void push_task(ThreadTask&& task){
+                //--------------------------
+                m_tasks.push(std::move(task));
+                //--------------------------
+                m_taskAvailableCondition.notify_one();
+                //--------------------------
+            }// end void push_task(ThreadTask&& task)
             //--------------------------
-            template<typename... Args>
+            template<typename... Args, bool U = use_priority_queue, typename = std::enable_if_t<U>>
             void emplace_task(Args&&... args){
                 //--------------------------
                 m_tasks.emplace(std::forward<Args>(args)...);
@@ -547,31 +832,69 @@ namespace ThreadPool{
                 //--------------------------
             }// end void emplace_task(Args&&... args)
             //--------------------------
-            void handleError(ThreadTask&& task, const char* error);
+            // Method for the case when priority queue is used
+            template <bool U = use_priority_queue, typename std::enable_if_t<U, int> = 0>
+            void handleError(ThreadTask&& task, const char* error){
+                if (task.get_retries() > 0) {
+                    //--------------------------
+                    std::scoped_lock lock(m_mutex);
+                    //--------------------------;
+                    task.decrease_retries();
+                    m_tasks.push(std::move(task));
+                    //--------------------------
+                } else {
+                    //--------------------------
+                    std::cerr << "Error in task after multiple retries: " << error << std::endl;
+                    //--------------------------
+                }// end if (task.get_retries() > 0)
+                //--------------------------
+            }// end void handleError(ThreadTask&& task, const char* error)
             //--------------------------
-            size_t thread_Workers_size(void) const;
+            // Method for the case when priority queue is NOT used
+            template <bool U = use_priority_queue, typename std::enable_if_t<!U, int> = 0>
+            void handleError(const char* error){
+                //--------------------------
+                std::cerr << "Error in task: " << error << std::endl;
+                //--------------------------
+            }// end void handleError(const char* error)
             //--------------------------
-            size_t active_tasks_size(void) const;
+            size_t thread_Workers_size(void) const{
+                //--------------------------
+                std::unique_lock lock(m_mutex);
+                //--------------------------
+                return m_workers.size();
+                //--------------------------
+            }// end size_t thread_Workers_size(void) const
             //--------------------------
-            std::tuple<size_t, size_t, size_t> get_status(void);
-            //--------------------------
-            void status_display_internal(void);
+            size_t active_tasks_size(void) const {
+                //--------------------------
+                if constexpr (!use_priority_queue){
+                    std::unique_lock lock(m_mutex);
+                }// end if constexpr (!use_priority_queue){
+                //--------------------------
+                return m_tasks.size();
+                //--------------------------
+            }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
-            std::atomic<size_t> m_failedTasksCount, m_retriedTasksCount, m_completedTasksCount;
-            //--------------------------
             const size_t m_upperThreshold;
             //--------------------------
             std::vector<std::jthread> m_workers;
             //--------------------------
-            PriorityQueue<ThreadTask> m_tasks;
+            using TaskContainerType = std::conditional_t<use_priority_queue, PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
+            TaskContainerType m_tasks;
             //--------------------------
             std::jthread m_adjustmentThread;
             //--------------------------
             mutable std::mutex m_mutex;
             //--------------------------
             std::condition_variable m_taskAvailableCondition, m_allStoppedCondition;
+            //--------------------------
+            // Definitions
+            //--------------------------
+            static constexpr auto CHECK_INTERVAL = std::chrono::nanoseconds(100); 
+            static constexpr size_t m_lowerThreshold = 1UL;
         //--------------------------------------------------------------
     };// end class ThreadPool
     //--------------------------------------------------------------
