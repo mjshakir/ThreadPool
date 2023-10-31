@@ -35,6 +35,16 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: clang++ --version
 
+    # Check MSVC Version
+    - name: Check MSVC Version
+      if: matrix.os == 'windows-latest'
+      run: |
+        $msvcVersion = & cl 2>&1 | Select-String -Pattern "Version"
+        $versionNumber = [version]($msvcVersion -split ' ')[-1]
+        if ($versionNumber.Major -lt 19 -or ($versionNumber.Major -eq 19 -and $versionNumber.Minor -lt 28)) {
+            throw "MSVC version is less than 19.28"
+        }
+      shell: pwsh
     # Additional setup for different architectures can be done here
 
     - name: Create build directory
