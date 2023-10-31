@@ -26,6 +26,12 @@ jobs:
     - name: Setup CMake, Ninja and GCC
       uses: lukka/get-cmake@v3.21.1
 
+    - name: Setup MSVC Build Tools
+      if: matrix.os == 'windows-latest'
+      run: |
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/actions/virtual-environments/main/images/win/scripts/Installers/Windows2019/Install-VS2019.ps1" -OutFile "Install-VS2019.ps1"
+        .\Install-VS2019.ps1
+
     # Check compiler versions
     - name: Check GCC Version
       if: matrix.os == 'ubuntu-latest'
@@ -40,8 +46,7 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         $msvcVersion = & cl 2>&1 | Select-String -Pattern "Version"
-        $versionNumber = [version]($msvcVersion -split ' ')[-1]
-        if ($versionNumber.Major -lt 19 -or ($versionNumber.Major -eq 19 -and $versionNumber.Minor -lt 28)) {
+        if (-not $msvcVersion -or ($msvcVersion -match "Version (\d+\.\d+)" | Out-Null) -and [version]$matches[1] -lt [version]"19.28") {
             throw "MSVC version is less than 19.28"
         }
       shell: pwsh
