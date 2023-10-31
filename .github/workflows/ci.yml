@@ -43,8 +43,14 @@ jobs:
     - name: Check MSVC Version
       if: matrix.os == 'windows-latest'
       run: |
-        $version = cl 2>&1 | Select-String -Pattern "Version (\d+\.\d+)"
-        if (-not $version -or [Version]$matches[1] -lt [Version]"19.28") {
+        $versionOutput = cl 2>&1
+        $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
+        
+        if (-not $match) {
+            throw "Unable to determine MSVC version from output: $versionOutput"
+        }
+        
+        if ([Version]$match.Matches.Groups[1].Value -lt [Version]"19.28") {
             throw "MSVC version is less than 19.28"
         }
       shell: pwsh
