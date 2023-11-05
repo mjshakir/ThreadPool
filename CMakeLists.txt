@@ -14,7 +14,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # Offer a switch to the user for choosing the type of the library (static or shared)
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_THREADPOOL_SHARED_LIBS "Build using shared libraries" ON)
 
 # Force colored output
 option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
