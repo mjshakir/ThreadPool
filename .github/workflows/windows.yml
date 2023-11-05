@@ -37,7 +37,6 @@ jobs:
               }
           } else {
               Write-Output "MSVC version could not be determined. Skipping version check."
-              # This sets a step output variable 'skip_step' to true
               echo "::set-output name=skip_step::true"
           }
         } catch {
@@ -59,4 +58,4 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest
+      run: ctest -C Release
