@@ -1,4 +1,4 @@
-name: CI Windows
+name: Windows x86_64
 
 on: [push, pull_request]
 
@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86, arm]
+        arch: [x86]
 
     runs-on: windows-latest
 

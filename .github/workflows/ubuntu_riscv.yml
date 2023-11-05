@@ -1,26 +1,28 @@
-name: CI macOS
+name: Ubuntu RISCV
 
 on: [push, pull_request]
 
 jobs:
   build:
-    # continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
-        arch: [x86, arm]
+        arch: [riscv]
 
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y libgtest-dev cmake
+
     - name: Setup CMake and Ninja
       uses: lukka/get-cmake@v3.21.1
 
-    - name: Check Clang Version
-      run: clang++ --version
+    - name: Check GCC Version
+      run: g++ --version
 
     - name: Create build directory
       run: mkdir build

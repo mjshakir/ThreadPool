@@ -1,0 +1,61 @@
+name: Windows ARM
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [arm]
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup CMake and Ninja
+      uses: lukka/get-cmake@v3.21.1
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Check MSVC Version
+      run: |
+        try {
+          $versionOutput = cl 2>&1
+          $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
+          
+          if ($match) {
+              $version = [Version]$match.Matches.Groups[1].Value
+              Write-Output "MSVC version found: $version"
+
+              # Check if version is less than 19.28
+              if ($version -lt [Version]"19.28") {
+                  throw "MSVC version is less than 19.28"
+              }
+          } else {
+              Write-Output "MSVC version could not be determined. Skipping version check."
+              echo "::set-output name=skip_step::true"
+          }
+        } catch {
+          throw $_
+        }
+      shell: pwsh
+      id: check_msvc
+
+    - name: Create build directory
+      if: steps.check_msvc.outputs.skip_step != 'true'
+      run: mkdir build
+
+    - name: Configure CMake
+      if: steps.check_msvc.outputs.skip_step != 'true'
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      working-directory: build
+      run: ctest -C Release
