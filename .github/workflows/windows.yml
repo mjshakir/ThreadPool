@@ -1,0 +1,49 @@
+name: CI Windows
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86, arm]
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup CMake and Ninja
+      uses: lukka/get-cmake@v3.21.1
+
+    - name: Setup MSVC
+      uses: ilammy/msvc-dev-cmd@v1
+
+    - name: Check MSVC Version
+      run: |
+        $versionOutput = cl 2>&1
+        $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
+        
+        if (-not $match) {
+            throw "Unable to determine MSVC version from output: $versionOutput"
+        }
+        
+        if ([Version]$match.Matches.Groups[1].Value -lt [Version]"19.28") {
+            throw "MSVC version is less than 19.28"
+        }
+      shell: pwsh
+
+    - name: Create build directory
+      run: mkdir build
+
+    - name: Configure CMake
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      working-directory: build
+      run: ctest
