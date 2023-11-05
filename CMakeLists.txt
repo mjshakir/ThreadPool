@@ -48,9 +48,12 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:include>
 )
 
-# Add an executable target for the example/main.cpp
-add_executable(${PROJECT_NAME}_example example/main.cpp)
-target_link_libraries(${PROJECT_NAME}_example PRIVATE ${PROJECT_NAME})
+# Check if this is the main project or if it is being included through add_subdirectory
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    # Add an executable target for the example/main.cpp
+    add_executable(${PROJECT_NAME}_example example/main.cpp)
+    target_link_libraries(${PROJECT_NAME}_example PRIVATE ${PROJECT_NAME})
+endif()
 
 if(MSVC)
     # Replace -O3 with /O2 for MSVC, also set runtime library flags
