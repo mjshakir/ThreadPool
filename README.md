@@ -39,10 +39,10 @@ You can easily include ThreadPool into your CMake project. Here is a step-by-ste
 
 ### Choosing Library Type (Static or Shared)
 
-By default, ThreadPool is built as a shared library. If you prefer a static library, you can set the `BUILD_SHARED_LIBS` option to `OFF` when generating the build system files:
+By default, ThreadPool is built as a shared library. If you prefer a static library, you can set the `BUILD_THREADPOOL_SHARED_LIBS` option to `OFF` when generating the build system files:
 
 ```bash
-set(BUILD_SHARED_LIBS OFF) # for static library
+set(BUILD_THREADPOOL_SHARED_LIBS OFF) # for static library
 add_subdirectory(extern/ThreadPool)
 ```
 
@@ -112,7 +112,7 @@ Note: If you haven't installed Ninja, you can do so by following the instruction
 After installing and linking the `ThreadPool` library to your project, you can utilize it within your application as follows:
 
 ```cpp
-#include "ThreadPool.h"
+#include "ThreadPool.hpp"
 
 int main() {
     // Create a ThreadPool with 4 worker threads.
@@ -133,7 +133,7 @@ int main() {
 
 ## Usage
 ```bash
-    ctest
+    ninja test # ctest
 ```
 
 ## Contributing to ThreadPool
