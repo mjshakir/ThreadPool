@@ -52,15 +52,22 @@ target_include_directories(${PROJECT_NAME}
 add_executable(${PROJECT_NAME}_example example/main.cpp)
 target_link_libraries(${PROJECT_NAME}_example PRIVATE ${PROJECT_NAME})
 
-# Compiler and Linker Options
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_options(${PROJECT_NAME} PRIVATE -O3)
-elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
-    # Sanitizer options for Debug configuration
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
-        target_compile_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
-        target_link_options(${PROJECT_NAME} PRIVATE -fsanitize=address)
+if(MSVC)
+    # Replace -O3 with /O2 for MSVC, also set runtime library flags
+    set(CMAKE_CXX_FLAGS_RELEASE "/O2 /MD")
+    set(CMAKE_CXX_FLAGS_DEBUG "/Od /MDd")
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(${PROJECT_NAME} PRIVATE /O2)
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_options(${PROJECT_NAME} PRIVATE /Od /Zi)
+        target_link_options(${PROJECT_NAME} PRIVATE /DEBUG)
+    endif()
+else()
+    # Original options for GCC/Clang
+    if(CMAKE_BUILD_TYPE STREQUAL "Release")
+        target_compile_options(${PROJECT_NAME} PRIVATE -O3)
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_compile_options(${PROJECT_NAME} PRIVATE -g -O0)
     endif()
 endif()
 
