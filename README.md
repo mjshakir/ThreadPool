@@ -1,9 +1,12 @@
 # ThreadPool
 
-![CI Ubuntu](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu.yml/badge.svg)
-![CI macOS](https://github.com/mjshakir/ThreadPool/actions/workflows/macos.yml/badge.svg)
-![CI Windows](https://github.com/mjshakir/ThreadPool/actions/workflows/windows.yml/badge.svg)
-
+![Ubuntu X86_64](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu_X86_64.yml/badge.svg)
+![Ubuntu ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu_arm.yml/badge.svg)
+![Ubuntu RISCV](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu_riscv.yml/badge.svg)
+![macOS X86_64](https://github.com/mjshakir/ThreadPool/actions/workflows/macos_x86_64.yml/badge.svg)
+![macOS ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/macos_arm.yml/badge.svg)
+![Windows X86_64](https://github.com/mjshakir/ThreadPool/actions/workflows/windows_x86_64.yml/badge.svg)
+![Windows ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/windows_arm.yml/badge.svg)
 
 ThreadPool is a high-performance C++ library designed for efficient parallel execution of tasks, utilizing a pool of managed threads. Under the hood, it leverages the power of `std::jthread` introduced in C++20, which automatically manages the life cycle of threads, saving developers from the intricacies of explicit thread management.
 
