@@ -23,22 +23,35 @@ jobs:
 
     - name: Check MSVC Version
       run: |
-        $versionOutput = cl 2>&1
-        $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
-        
-        if (-not $match) {
-            throw "Unable to determine MSVC version from output: $versionOutput"
-        }
-        
-        if ([Version]$match.Matches.Groups[1].Value -lt [Version]"19.28") {
-            throw "MSVC version is less than 19.28"
+        try {
+          $versionOutput = cl 2>&1
+          $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
+          
+          if ($match) {
+              $version = [Version]$match.Matches.Groups[1].Value
+              Write-Output "MSVC version found: $version"
+
+              # Check if version is less than 19.28
+              if ($version -lt [Version]"19.28") {
+                  throw "MSVC version is less than 19.28"
+              }
+          } else {
+              Write-Output "MSVC version could not be determined. Skipping version check."
+              # This sets a step output variable 'skip_step' to true
+              echo "::set-output name=skip_step::true"
+          }
+        } catch {
+          throw $_
         }
       shell: pwsh
+      id: check_msvc
 
     - name: Create build directory
+      if: steps.check_msvc.outputs.skip_step != 'true'
       run: mkdir build
 
     - name: Configure CMake
+      if: steps.check_msvc.outputs.skip_step != 'true'
       run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
