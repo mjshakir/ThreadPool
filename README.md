@@ -39,7 +39,7 @@ You can easily include ThreadPool into your CMake project. Here is a step-by-ste
 
 2. Add the following lines to your CMakeLists.txt file.
     ```cmake
-    add_subdirectory(extern/ThreadPool)
+    add_subdirectory(extern/ThreadPool) # build shared library
 
     # Link your application with ThreadPool
     target_link_libraries(your_target_name PRIVATE ${THREADPOOL_LIBRARIES}) # or target_link_libraries(your_target_name PRIVATE ThreadPool::threadpool)
@@ -49,7 +49,7 @@ You can easily include ThreadPool into your CMake project. Here is a step-by-ste
 
 By default, ThreadPool is built as a shared library. If you prefer a static library, you can set the `BUILD_THREADPOOL_SHARED_LIBS` option to `OFF` when generating the build system files:
 
-```bash
+```cmake
 set(BUILD_THREADPOOL_SHARED_LIBS OFF) # for static library
 add_subdirectory(extern/ThreadPool)
 ```
