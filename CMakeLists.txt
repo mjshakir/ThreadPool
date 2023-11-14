@@ -22,6 +22,8 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 # Set the runtime output directory only if this is a standalone project
 if(THREADPOOL_STANDALONE_PROJECT)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 #------------------------------------------------------------------------------------------
 # Offer switches for the type of the library and optional builds
@@ -70,7 +72,12 @@ target_include_directories(${THREADPOOL_LIBRARY_NAME} PUBLIC
 add_library(ThreadPool::threadpool ALIAS ${THREADPOOL_LIBRARY_NAME})
 #------------------------------------------------------------------------------------------
 # Set THREADPOOL_LIBRARIES variable
-set(THREADPOOL_LIBRARIES ThreadPool::threadpool)
+if(THREADPOOL_STANDALONE_PROJECT)
+    set(THREADPOOL_LIBRARIES ThreadPool::threadpool)
+else()
+    set(THREADPOOL_LIBRARIES ThreadPool::threadpool PARENT_SCOPE)
+endif()
+message(STATUS "THREADPOOL_LIBRARIES: ${THREADPOOL_LIBRARIES}")
 #------------------------------------------------------------------------------------------
 # Building examples
 if(BUILD_THREADPOOL_EXAMPLE)
