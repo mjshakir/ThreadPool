@@ -42,7 +42,7 @@ You can easily include ThreadPool into your CMake project. Here is a step-by-ste
     add_subdirectory(extern/ThreadPool)
 
     # Link your application with ThreadPool
-    target_link_libraries(your_target_name PRIVATE ThreadPool)
+    target_link_libraries(your_target_name PRIVATE ${THREADPOOL_LIBRARIES}) # or target_link_libraries(your_target_name PRIVATE ThreadPool::threadpool)
     ```
 
 ### Choosing Library Type (Static or Shared)
