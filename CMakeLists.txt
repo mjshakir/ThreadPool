@@ -91,15 +91,28 @@ endif()
 if(MSVC)
     set(CMAKE_CXX_FLAGS_RELEASE "/O2 /MD")
     set(CMAKE_CXX_FLAGS_DEBUG "/Od /MDd")
-    target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE "$<$<CONFIG:Release>:/O2>" "$<$<CONFIG:Debug>:/Od /Zi>")
+    target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE 
+        "$<$<CONFIG:Release>:/O2>" 
+        "$<$<CONFIG:Debug>:/Od>" 
+        "$<$<CONFIG:Debug>:/Zi>"
+    )
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_link_options(${THREADPOOL_LIBRARY_NAME} PRIVATE /DEBUG)
     endif()
 else()
-    target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE "$<$<CONFIG:Release>:-O3>" "$<$<CONFIG:Debug>:-g -O0>")
-    if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
-        target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE "$<$<CONFIG:Debug>:-fsanitize=address>")
-        target_link_options(${THREADPOOL_LIBRARY_NAME} PRIVATE "$<$<CONFIG:Debug>:-fsanitize=address>")
+    # For non-MSVC compilers
+    target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE 
+        "$<$<CONFIG:Release>:-O3>"
+    )
+    # Conditionally include AddressSanitizer flags only if standalone and in Debug mode
+    if(THREADPOOL_STANDALONE_PROJECT AND "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang|GNU")
+        set(SANITIZE_FLAGS "$<$<CONFIG:Debug>:-fsanitize=address>")
+        target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE 
+            "$<$<CONFIG:Debug>:-g>"
+            "$<$<CONFIG:Debug>:-O0>"
+            ${SANITIZE_FLAGS}
+        )
+        target_link_options(${THREADPOOL_LIBRARY_NAME} PRIVATE ${SANITIZE_FLAGS})
     endif()
 endif()
 #------------------------------------------------------------------------------------------
