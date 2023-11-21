@@ -25,7 +25,7 @@ This library stands out by offering flexibility in task scheduling through eithe
 - Options for both shared and static library build configurations to suit various application needs.
 
 ## Prerequisites
-- CMake 3.14 or higher
+- CMake 3.5 or higher
 - A compatible C++20 compiler
 
 ## How to Include ThreadPool in Your Project
