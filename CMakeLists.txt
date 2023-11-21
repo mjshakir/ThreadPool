@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 #------------------------------------------------------------------------------------------
 # Determine if ThreadPool is built as a standalone project or included by other projects
 set(THREADPOOL_STANDALONE_PROJECT OFF)
