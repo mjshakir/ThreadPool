@@ -760,19 +760,30 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    // if (workerCount > taskCount) {
+                    if (workerCount > taskCount) {
                         //--------------------------
-                        // for (size_t i = 0; i < workerCount - taskCount and !m_workers.empty() and !m_adjustmentThread.get_stop_token().stop_requested(); ++i) {
-                            // m_workers.back().request_stop(); // Request each worker to stop
-                            // m_allStoppedCondition.wait(lock, [this] { return m_workers.back().get_stop_token().stop_requested();});
+                        for (auto &worker : m_workers) {
+                            // Check if this worker is idle
+                            if (worker.is_idle()) {
+                                //--------------------------
+                                worker.request_stop(); // Request the idle worker to stop
+                                m_allStoppedCondition.wait(lock, [&worker] { return worker.get_stop_token().stop_requested(); });
+                                //--------------------------
+                                if (worker.joinable()) {
+                                    //--------------------------
+                                    worker.join();
+                                    // Remove the stopped worker from the vector
+                                    m_workers.erase(std::remove(m_workers.begin(), m_workers.end(), worker), m_workers.end());
+                                    //--------------------------
+                                    break; // Exit loop after stopping one worker
+                                    //--------------------------
+                                }// end if (worker.joinable())
+                                //--------------------------
+                            }// end if (worker.is_idle())
                             //--------------------------
-                            // if(m_workers.back().joinable()){
-                                // m_workers.back().join();
-                                // m_workers.pop_back(); // Safely remove the stopped worker
-                            // }// end if(m_workers.back().joinable())
-                        // }
+                        }// end for (auto &worker : m_workers)
                         //--------------------------
-                    // }// end if (workerCount > taskCount)
+                    }// end if (workerCount > taskCount)
                     //--------------------------
                     if (taskCount > workerCount and workerCount < m_upperThreshold) {
                         create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
