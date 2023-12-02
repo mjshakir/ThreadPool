@@ -1,3 +1,4 @@
+#pragma once 
 //--------------------------------------------------------------
 // Standard library
 //--------------------------------------------------------------
@@ -13,35 +14,35 @@ namespace ThreadPool{
         //--------------------------------------------------------------
         public:
             //--------------------------------------------------------------
-            void add(const std::shared_ptr<std::jthread>& thread) {
-                std::lock_guard<std::mutex> lock(mutex);
-                set.insert(thread);
-            }
+            ThreadSafeSet(void) = default;
             //--------------------------
-            void remove(const std::shared_ptr<std::jthread>& thread) {
-                std::lock_guard<std::mutex> lock(mutex);
-                set.erase(thread);
-            }
+            ThreadSafeSet(const size_t& size = static_cast<size_t>(std::thread::hardware_concurrency()));
             //--------------------------
-            std::optional<std::shared_ptr<std::jthread>> getOne() {
-                std::lock_guard<std::mutex> lock(mutex);
-                if (!set.empty()) {
-                    auto it = set.begin();
-                    std::shared_ptr<std::jthread> thread = *it;
-                    set.erase(it);
-                    return thread;
-                }
-                return std::nullopt;
-            }
+            void add(const std::shared_ptr<std::jthread>& thread);
             //--------------------------
-            bool empty() const {
-                std::lock_guard<std::mutex> lock(mutex);
-                return set.empty();
-            }
+            void remove(const std::shared_ptr<std::jthread>& thread);
+            //--------------------------
+            bool empty(void) const;
+            //--------------------------
+            void reserve(const size_t& size);
+            //--------------------------
+            std::optional<std::shared_ptr<std::jthread>> get_thread(void);
+            //--------------------------------------------------------------
+            protected:
+            //--------------------------------------------------------------
+            void add_thread(const std::shared_ptr<std::jthread>& thread);
+            //--------------------------
+            void remove_thread(const std::shared_ptr<std::jthread>& thread);
+            //--------------------------
+            bool empty_set(void) const;
+            //--------------------------
+            void reserve_size(const size_t& size);
+            //--------------------------
+            std::optional<std::shared_ptr<std::jthread>> get_thread_local(void);
             //--------------------------------------------------------------
         private:
-            std::unordered_set<std::shared_ptr<std::jthread>> set;
-            mutable std::mutex mutex;
+            std::unordered_set<std::shared_ptr<std::jthread>> m_set;
+            mutable std::mutex m_mutex;
         //--------------------------------------------------------------
     }; // end class ThreadSafeSet
     //--------------------------------------------------------------

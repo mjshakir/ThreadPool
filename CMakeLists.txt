@@ -51,6 +51,7 @@ set(THREADPOOL_SOURCES
     ${THREADPOOL_SOURCE_DIR}/ThreadPool.cpp
     ${THREADPOOL_SOURCE_DIR}/PriorityQueue.cpp
     ${THREADPOOL_SOURCE_DIR}/ThreadTask.cpp
+    ${THREADPOOL_SOURCE_DIR}/ThreadSafeSet.cpp
 )
 #------------------------------------------------------------------------------------------
 # Define the ThreadPool library target
