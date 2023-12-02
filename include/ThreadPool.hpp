@@ -701,7 +701,7 @@ namespace ThreadPool{
                         //--------------------------
                         m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        idle_thread_ids.erase(id); // Mark as busy
+                        m_idle_thread_ids.erase(id); // Mark as busy
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
@@ -782,7 +782,7 @@ namespace ThreadPool{
                             //--------------------------
                             m_workers.erase(m_workers.begin() + idle_thread_id);
                             //--------------------------
-                            idle_thread_ids.erase(idle_thread_id);
+                            m_idle_thread_ids.erase(idle_thread_id);
                             //--------------------------
                         }// end if (m_workers.at(idle_thread_id).joinable())
                         //--------------------------
