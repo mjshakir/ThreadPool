@@ -435,7 +435,7 @@ namespace ThreadPool{
                 //--------------------------
                 auto _threads_number = std::clamp(numThreads, m_lowerThreshold, static_cast<size_t>(std::thread::hardware_concurrency()));
                 create_task(_threads_number);
-                m_idle_thread_id.reserve(_threads_number);
+                m_idle_thread_ids.reserve(_threads_number);
                 //--------------------------
                 if constexpr (use_priority_queue){
                     m_tasks.reserve(numThreads);
@@ -906,7 +906,7 @@ namespace ThreadPool{
             //--------------------------
             mutable std::mutex m_mutex;
             //--------------------------
-            std::unordered_set<size_t> m_idle_thread_id;
+            std::unordered_set<size_t> m_idle_thread_ids;
             //--------------------------
             std::condition_variable m_taskAvailableCondition, m_allStoppedCondition;
             //--------------------------
