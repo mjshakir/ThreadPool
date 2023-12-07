@@ -19,6 +19,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Print out the build type
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 #------------------------------------------------------------------------------------------
+if(MSVC)
+    # MSVC specific warning flags
+    add_library(common_options INTERFACE)
+    target_compile_options(common_options INTERFACE /W4)  # Equivalent to -Wall in GCC/Clang
+else()
+    # GCC/Clang specific warning flags
+    add_library(common_options INTERFACE)
+    target_compile_options(common_options INTERFACE -Wall -Wextra -Wpedantic -pedantic-errors -Werror=format-security -fasynchronous-unwind-tables)
+endif()
+#------------------------------------------------------------------------------------------
 # Set the runtime output directory only if this is a standalone project
 if(THREADPOOL_STANDALONE_PROJECT)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
