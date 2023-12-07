@@ -2,18 +2,20 @@ name: Windows x86_64
 
 on: [push, pull_request]
 
+env:
+  BUILD_TYPE: Release
+
 jobs:
   build:
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         arch: [x86]
 
-    runs-on: windows-latest
-
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Setup CMake and Ninja
       uses: lukka/get-cmake@v3.21.1
@@ -26,12 +28,9 @@ jobs:
         try {
           $versionOutput = cl 2>&1
           $match = $versionOutput | Select-String -Pattern "Version (\d+\.\d+)"
-          
           if ($match) {
               $version = [Version]$match.Matches.Groups[1].Value
               Write-Output "MSVC version found: $version"
-
-              # Check if version is less than 19.28
               if ($version -lt [Version]"19.28") {
                   throw "MSVC version is less than 19.28"
               }
@@ -51,14 +50,22 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_msvc.outputs.skip_step != 'true'
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
-    - name: List build directory contents
-      run: ls -R build/
-    
     - name: Build
-      run: cmake --build build --config Release --verbose
+      run: cmake --build build --config ${{ env.BUILD_TYPE }} --verbose
+
+    - name: List build and lib directory contents
+      run: |
+        ls -R build/
+        ls -R build/lib/
 
     - name: Test
       working-directory: build
-      run: ctest -C Release
+      run: ctest -C ${{ env.BUILD_TYPE }}
+
+    - name: Diagnostics if build fails
+      if: failure()
+      run: |
+        echo "Build failed. Listing build directory contents:"
+        ls -R build/
