@@ -211,7 +211,7 @@ void ThreadPool::ThreadTask::increase_retries_local(const uint8_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    auto _results = m_retries + amount;
+    uint16_t _results = m_retries + amount;
     //--------------------------
     m_retries = (_results > std::numeric_limits<uint8_t>::max()) ? std::numeric_limits<uint8_t>::max() : _results;
     //--------------------------
@@ -221,9 +221,9 @@ void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    auto _results = m_retries - amount;
+    uint8_t _results = m_retries - amount;
     //--------------------------
-    m_retries = (_results < 0U) ? 0U : _results;
+    m_retries = std::clamp(_results, std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) const
 //--------------------------------------------------------------
@@ -231,7 +231,7 @@ void ThreadPool::ThreadTask::increase_priority_local(const uint8_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    auto _results = m_priority + amount;
+    uint16_t _results = m_priority + amount;
     //--------------------------
     m_priority = (_results > std::numeric_limits<uint8_t>::max()) ? std::numeric_limits<uint8_t>::max() : _results;
     //--------------------------
@@ -241,9 +241,9 @@ void ThreadPool::ThreadTask::decrease_priority_local(const uint8_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    auto _results = m_priority - amount;
+    uint8_t _results = m_priority - amount;
     //--------------------------
-    m_priority = (_results < 0U) ? 0U : _results;
+    m_priority = std::clamp(_results, std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_priority_local(const uint8_t& amount) const
 //--------------------------------------------------------------
