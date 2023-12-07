@@ -754,7 +754,7 @@ namespace ThreadPool{
                     m_tasks.remove();
                 }// end if constexpr (use_priority_queue)
                 //--------------------------
-                const auto taskCount = active_tasks_size(), workerCount = thread_Workers_size();
+                const size_t taskCount = active_tasks_size(), workerCount = thread_Workers_size();
                 //--------------------------
                 {
                     //--------------------------
