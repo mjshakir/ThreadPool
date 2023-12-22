@@ -750,10 +750,6 @@ namespace ThreadPool{
             //--------------------------
             void adjustWorkers(void){
                 //--------------------------
-                if constexpr (use_priority_queue){
-                    m_tasks.remove();
-                }// end if constexpr (use_priority_queue)
-                //--------------------------
                 const size_t taskCount = active_tasks_size(), workerCount = thread_Workers_size();
                 //--------------------------
                 {
@@ -776,7 +772,7 @@ namespace ThreadPool{
                     //--------------------------
                     if (taskCount > workerCount and workerCount < m_upperThreshold) {
                         create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
-                    }
+                    }// if (taskCount > workerCount and workerCount < m_upperThreshold)
                     //--------------------------
                 }
                 m_allStoppedCondition.notify_one();
