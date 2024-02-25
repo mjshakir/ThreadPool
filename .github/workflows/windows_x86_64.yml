@@ -77,3 +77,10 @@ jobs:
             ls -R build/
             ls -R build/lib/
             dir .\lib\Release\ /s /b
+
+        - name: Diagnostics if build fails
+          if: failure()
+          run: |
+            echo "Build failed. Listing build directory contents:"
+            ls -R build/
+            dir .\lib\Release\ /s /b
