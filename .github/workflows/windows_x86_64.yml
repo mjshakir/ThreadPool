@@ -69,3 +69,11 @@ jobs:
       run: |
         echo "Build failed. Listing build directory contents:"
         ls -R build/
+        - name: Build
+          run: cmake --build build --config ${{ env.BUILD_TYPE }} --verbose
+
+        - name: List build and lib directory contents
+          run: |
+            ls -R build/
+            ls -R build/lib/
+            dir .\lib\Release\ /s /b
