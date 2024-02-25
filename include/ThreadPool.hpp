@@ -105,7 +105,7 @@ namespace ThreadPool{
                             m_priority(0),
                             m_retries(0),
                             m_submitted(false),
-                            m_task(createTask(std::forward<F>(f), std::forward<Args>(args)...)) {
+                            m_task(create_task(std::forward<F>(f), std::forward<Args>(args)...)) {
                         //--------------------------
                         if constexpr (!std::is_void_v<ReturnType>) {
                             m_future.emplace(m_task.get_future());
@@ -330,7 +330,7 @@ namespace ThreadPool{
                     /**
                      * @brief Constructs a `std::packaged_task` based on the provided function and its arguments.
                      * 
-                     * @details The `createTask` method is responsible for creating a `std::packaged_task` that encapsulates the 
+                     * @details The `create_task` method is responsible for creating a `std::packaged_task` that encapsulates the 
                      * provided function and its arguments. This packaged task, when executed, will invoke the function with 
                      * the given arguments.
                      * 
@@ -353,13 +353,13 @@ namespace ThreadPool{
                      * }
                      * 
                      * ThreadPool::TaskBuilder taskBuilder(//...some initialization params...);
-                     * auto task = taskBuilder.createTask(add, 5, 3);
+                     * auto task = taskBuilder.create_task(add, 5, 3);
                      * 
                      * task();  // Invokes the encapsulated function, i.e., add(5, 3)
                      * ```
                      */
                     template <typename Func, typename... CArgs>
-                    auto createTask(Func&& func, CArgs&&... capturedArgs) {
+                    auto create_task(Func&& func, CArgs&&... capturedArgs) {
                         //--------------------------
                         if constexpr (!std::is_void_v<ReturnType>) {
                             //--------------------------
@@ -379,7 +379,7 @@ namespace ThreadPool{
                             );
                             //--------------------------
                         }// end else if constexpr (!std::is_void_v<ReturnType>)
-                    }// end auto createTask(Func&& func, CArgs&&... capturedArgs)
+                    }// end auto create_task(Func&& func, CArgs&&... capturedArgs)
                     //--------------------------------------------------------------
                 private:
                     //--------------------------------------------------------------
@@ -433,7 +433,7 @@ namespace ThreadPool{
             explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upperThreshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_adjustmentThread([this](const std::stop_token& stoken){this->adjustmentThreadFunction(stoken);}){
+                                m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
                 //--------------------------
                 auto _threads_number = std::clamp( numThreads, m_lowerThreshold, m_upperThreshold);
                 m_idle_threads.reserve(_threads_number);
@@ -681,14 +681,14 @@ namespace ThreadPool{
                 for (size_t i = 0; i < numThreads; ++i) {
                     //--------------------------
                     m_workers.emplace(i, [i, this](std::stop_token stoken) {
-                        this->workerFunction(stoken, i);
+                        this->worker_function(stoken, i);
                     });
                     //--------------------------
                 }// end  for (size_t i = 0; i < numThreads; ++i)
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
             //--------------------------
-            void workerFunction(const std::stop_token& stoken, const size_t id){
+            void worker_function(const std::stop_token& stoken, const size_t id){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -734,25 +734,25 @@ namespace ThreadPool{
                     catch (const std::exception& e) {
                         //--------------------------
                         if constexpr (use_priority_queue){
-                            handleError(std::move(task), e.what());
+                            handle_error(std::move(task), e.what());
                         } else{
-                            handleError(e.what());
+                            handle_error(e.what());
                         }// end if constexpr (use_priority_queue)
                         //--------------------------
                     } // end catch (const std::exception& e)
                     catch (...) {
                         //--------------------------
                         if constexpr (use_priority_queue){
-                            handleError(std::move(task), "Unknown error");
+                            handle_error(std::move(task), "Unknown error");
                         } else{
-                            handleError("Unknown error");
+                            handle_error("Unknown error");
                         }// end if constexpr (use_priority_queue)
                         //--------------------------
                     }// end catch (...)
                     //--------------------------
                 }// end while (!stoken.stop_requested())
                 //--------------------------
-            }// end void workerFunction(void)
+            }// end void worker_function(void)
             //--------------------------
             void adjustWorkers(void){
                 //--------------------------
@@ -762,54 +762,18 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    // if (workerCount > taskCount) {
-                        //--------------------------
-                        // for (size_t i = 0; i < workerCount - taskCount and !m_workers.empty() and !m_adjustmentThread.get_stop_token().stop_requested(); ++i) {
-                            // m_workers.back().request_stop(); // Request each worker to stop
-                            // m_allStoppedCondition.wait(lock, [this] { return m_workers.back().get_stop_token().stop_requested();});
-                            //--------------------------
-                            // if(m_workers.back().joinable()){
-                                // m_workers.back().join();
-                                // m_workers.pop_back(); // Safely remove the stopped worker
-                            // }// end if(m_workers.back().joinable())
-                        // }
-                        //--------------------------
-                    // }// end if (workerCount > taskCount)
-                    //--------------------------
                     if (workerCount > taskCount and !m_idle_threads.empty()) {
-                        //--------------------------
-                        std::cout << "idle threads: " << m_idle_threads.size() << std::endl;
-                        //--------------------------
                         size_t _thread_id = *m_idle_threads.begin();
-                        //--------------------------
-                        if(m_workers.contains(_thread_id)){
-                            //--------------------------
-                            m_workers.at(_thread_id).request_stop();
-                            //--------------------------
-                            //m_allStoppedCondition.wait(lock, [this, _thread_id] { return m_workers.at(_thread_id).get_stop_token().stop_requested();});
-                            //--------------------------
-                            //m_workers.at(_thread_id).join();
-                            //m_workers.erase(_thread_id);
+                        m_workers.at(_thread_id).request_stop();
+                        m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
+                        if (m_workers.at(_thread_id).get_stop_token().stop_requested()) {
                             m_idle_threads.erase(_thread_id);
-                        //     //--------------------------
-                        }// end if(m_workers.contains(id))
-                        //--------------------------
-                        //auto _idle_threads = m_idle_threads;
-                        //--------------------------
-                        //for (const auto& _thread_id : _idle_threads){
-                            //--------------------------
-                            //m_workers.at(_thread_id).request_stop();
-                            //--------------------------
-                            // m_allStoppedCondition.wait(lock, [this, _thread_id] { return m_workers.at(_thread_id).get_stop_token().stop_requested();});
-                            //--------------------------
-                            // m_workers.at(_thread_id).join();
-                            // m_workers.erase(_thread_id);
-                            //--------------------------
-                            //m_idle_threads.erase(_thread_id);
-                            //--------------------------
-                        //}// end for (const auto& _idle_thread : _idle_threads)
-                        //--------------------------
-                    }// end if (workerCount > taskCount)
+                            lock.unlock(); // Release the lock before joining the thread
+                            m_workers.at(_thread_id).join();
+                            m_workers.erase(_thread_id);
+                            lock.lock(); // Reacquire the lock after joining the thread
+                        }
+                    }
                     //--------------------------
                     if (taskCount > workerCount and workerCount < m_upperThreshold) {
                         create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
@@ -820,7 +784,7 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjustWorkers(void)
             //--------------------------
-            void adjustmentThreadFunction(const std::stop_token& stoken){
+            void adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -830,7 +794,7 @@ namespace ThreadPool{
                     //--------------------------
                 }// end while (!stoken.stop_requested())
                 //--------------------------
-            }// end void adjustmentThreadFunction(const std::stop_token& stoken)
+            }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
             void stop(void){
                 //--------------------------
@@ -875,7 +839,7 @@ namespace ThreadPool{
             //--------------------------
             // Method for the case when priority queue is used
             template <bool U = use_priority_queue, typename std::enable_if_t<U, int> = 0>
-            void handleError(ThreadTask&& task, const char* error){
+            void handle_error(ThreadTask&& task, const char* error){
                 if (task.get_retries() > 0) {
                     //--------------------------
                     std::scoped_lock lock(m_mutex);
@@ -889,15 +853,15 @@ namespace ThreadPool{
                     //--------------------------
                 }// end if (task.get_retries() > 0)
                 //--------------------------
-            }// end void handleError(ThreadTask&& task, const char* error)
+            }// end void handle_error(ThreadTask&& task, const char* error)
             //--------------------------
             // Method for the case when priority queue is NOT used
             template <bool U = use_priority_queue, typename std::enable_if_t<!U, int> = 0>
-            void handleError(const char* error){
+            void handle_error(const char* error){
                 //--------------------------
                 std::cerr << "Error in task: " << error << std::endl;
                 //--------------------------
-            }// end void handleError(const char* error)
+            }// end void handle_error(const char* error)
             //--------------------------
             size_t thread_Workers_size(void) const{
                 //--------------------------
@@ -936,7 +900,7 @@ namespace ThreadPool{
             //--------------------------
             // Definitions
             //--------------------------
-            static constexpr auto CHECK_INTERVAL = std::chrono::nanoseconds(100); 
+            static constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(1); 
             static constexpr size_t m_lowerThreshold = 1UL;
         //--------------------------------------------------------------
     };// end class ThreadPool
