@@ -128,6 +128,7 @@ endif()
 #------------------------------------------------------------------------------------------
 # Enable testing and add the test directory if this is a standalone project
 if(BUILD_THREADPOOL_TESTS AND THREADPOOL_STANDALONE_PROJECT)
+    find_package(GTest QUIET)
     enable_testing()
     add_subdirectory(test)
 endif()
