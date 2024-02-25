@@ -69,4 +69,5 @@ jobs:
       run: |
         echo "Build failed. Listing build directory contents:"
         ls -R build/
-        dir .\lib\Release\ /s /b
+        Get-ChildItem -Path .\lib\Release\ -Recurse -Name
+      shell: pwsh
