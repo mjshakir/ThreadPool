@@ -770,7 +770,7 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (workerCount > taskCount and !m_idle_threads.empty()) {
+                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > 1) {
                         size_t _thread_id = *m_idle_threads.begin();
                         m_workers.at(_thread_id).request_stop();
                         m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request

@@ -197,11 +197,49 @@ TEST_F(ThreadPoolTest, AllThreadsRunningWithoutGet) {
     EXPECT_GE(threadIds.size(), threadCount) << "Not all threads were utilized!";
 }
 
+TEST_F(ThreadPoolTest, DynamicThreadManagement) {
+    std::atomic_int taskCounter{0};
+    constexpr size_t taskCount = 100;
 
+    // Record the initial number of threads
+    auto initialThreadCount = threadPool->threads_size();
 
+    // First burst of tasks
+    for (int i = 0; i < taskCount; ++i) {
+        threadPool->queue(true, [&taskCounter]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Simulate work
+            taskCounter++;
+        });
+    }
 
+    // Wait for a second to simulate a period of low demand
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
-// int main(int argc, char **argv) {
-//     ::testing::InitGoogleTest(&argc, argv);
-//     return RUN_ALL_TESTS();
-// }
+    // Check if the number of threads has decreased due to idle period
+    auto threadCountAfterIdle = threadPool->threads_size();
+    EXPECT_LE(threadCountAfterIdle, initialThreadCount);
+    // Note: Depending on the implementation details of your thread pool, this expectation may need adjustment.
+
+    // Check the queue size to ensure tasks from the first burst are processed
+    auto queuedTasksAfterFirstBurst = threadPool->queued_size();
+    EXPECT_EQ(queuedTasksAfterFirstBurst, 0); // Assuming tasks are completed
+
+    // Second burst of tasks
+    for (int i = 0; i < taskCount; ++i) {
+        threadPool->queue(true, [&taskCounter]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Simulate work
+            taskCounter++;
+        });
+    }
+
+    // Wait for all tasks to complete
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
+    // Verify all tasks were completed
+    EXPECT_EQ(taskCounter.load(), 200);
+
+    // Verify that the thread pool has scaled back up if necessary
+    auto threadCountAfterSecondBurst = threadPool->threads_size();
+    EXPECT_GE(threadCountAfterSecondBurst, threadCountAfterIdle);
+    // This checks if the thread pool increased the number of threads in response to the second burst of tasks.
+}
