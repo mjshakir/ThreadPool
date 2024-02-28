@@ -11,6 +11,7 @@
 #include <concepts>
 #include <unordered_set>
 #include <unordered_map>
+#include <limits>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -406,7 +407,7 @@ namespace ThreadPool{
              * Internally, the ThreadPool will keep track of tasks that have failed, been retried, 
              * or completed successfully.
              * 
-             * @param numThreads Desired number of worker threads. This number will be clamped 
+             * @param thread_number Desired number of worker threads. This number will be clamped 
              * between the system's predefined lower and upper thresholds.
              *
              * @example
@@ -430,20 +431,21 @@ namespace ThreadPool{
              * In cases where the provided number is greater than the number of hardware threads or less than the lower threshold,
              * it will be adjusted accordingly.
              */
-            explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
+            explicit ThreadPool(const size_t& thread_number = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upperThreshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
+                                m_thread_id(0),
                                 m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
                 //--------------------------
-                auto _threads_number = std::clamp( numThreads, m_lowerThreshold, m_upperThreshold);
+                size_t _threads_number = std::clamp( thread_number, m_lowerThreshold, m_upperThreshold);
                 m_idle_threads.reserve(_threads_number);
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (use_priority_queue){
-                    m_tasks.reserve(numThreads);
+                    m_tasks.reserve(thread_number);
                 }//end if constexpr (use_priority_queue)
                 //--------------------------
-            }// end ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
+            }// end ThreadPool(const size_t& thread_number = static_cast<size_t>(std::thread::hardware_concurrency()))
             //--------------------------
             ThreadPool(const ThreadPool&)            = delete;
             ThreadPool& operator=(const ThreadPool&) = delete;
@@ -674,19 +676,25 @@ namespace ThreadPool{
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            void create_task(const size_t& numThreads){
+            void create_task(const size_t& thread_number){
                 //--------------------------
-                m_workers.reserve(m_workers.size() + numThreads);
+                std::scoped_lock lock(m_mutex);
                 //--------------------------
-                for (size_t i = 0; i < numThreads; ++i) {
+                m_workers.reserve(m_workers.size() + thread_number);
+                //--------------------------
+                for (size_t i = 0; i < thread_number; ++i) {
                     //--------------------------
-                    m_workers.emplace(i, [i, this](std::stop_token stoken) {
-                        this->worker_function(stoken, i);
+                    m_workers.emplace(m_thread_id, [_current_id = m_thread_id, this](std::stop_token stoken) {
+                        this->worker_function(stoken, _current_id);
                     });
                     //--------------------------
-                }// end  for (size_t i = 0; i < numThreads; ++i)
+                    if(m_thread_id++ == std::numeric_limits<size_t>::max()){
+                        m_thread_id = 0;
+                    }// end if(m_thread_id++ == std::numeric_limits<size_t>::max()
+                    //--------------------------
+                }// end  for (size_t i = 0; i < thread_number; ++i)
                 //--------------------------
-            }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
+            }//end void ThreadPool::ThreadPool::create_task(const size_t& thread_number)
             //--------------------------
             void worker_function(const std::stop_token& stoken, const size_t id){
                 //--------------------------
@@ -884,6 +892,8 @@ namespace ThreadPool{
         private:
             //--------------------------------------------------------------
             const size_t m_upperThreshold;
+            //--------------------------
+            size_t m_thread_id;
             //--------------------------
             std::unordered_map<size_t, std::jthread> m_workers;
             //--------------------------
