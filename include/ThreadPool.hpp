@@ -23,13 +23,34 @@
 namespace ThreadPool{
     //--------------------------------------------------------------
     /**
+     * @enum ThreadMode
+     * @brief Enum class to specify threading mode for ThreadPool.
+     *
+     * This enum class is used to define the threading mode for the ThreadPool class. It supports two modes:
+     * STANDARD and PRIORITY. STANDARD mode is used for regular operation, while PRIORITY mode allows for
+     * priority-based task execution within the ThreadPool.
+     *
+     * @param ThreadMode::STANDARD
+     * STANDARD mode indicates that the ThreadPool will process tasks in a first-come, first-served manner,
+     * without considering task priority. This is the default mode.
+     *
+     * @param ThreadMode::PRIORITY
+     * PRIORITY mode indicates that the ThreadPool will process tasks based on their priority, allowing
+     * higher priority tasks to be executed before lower priority ones.
+     */
+    enum class ThreadMode : bool {
+        STANDARD = false,
+        PRIORITY = true
+    }; // end enum class ThreadMode
+    //--------------------------------------------------------------
+    /**
      * @class ThreadPool
      * @brief A thread pool implementation that manages worker threads.
      *
      * The ThreadPool class handles the creation, management, and destruction of threads. 
      * It also provides functionality to queue tasks for execution by the worker threads.
      */
-    template <bool use_priority_queue = false>
+    template <ThreadMode use_priority_queue = ThreadMode::STANDARD>
     class ThreadPool {
         //-------------------------------------------------------------
         protected:
@@ -55,7 +76,7 @@ namespace ThreadPool{
              * auto result = task.get();  // Will retrieve the result after task execution.
              * @endcode
              */
-            template <typename F, typename... Args> requires use_priority_queue
+            template <typename F, typename... Args> requires (static_cast<bool>(use_priority_queue))
             class TaskBuilder {
                 //--------------------------------------------------------------
                 // static_assert(!use_priority_queue, "TaskBuilder can only be used with priority queues disable.");
@@ -439,9 +460,9 @@ namespace ThreadPool{
                 m_idle_threads.reserve(_threads_number);
                 create_task(_threads_number);
                 //--------------------------
-                if constexpr (use_priority_queue){
+                if constexpr (static_cast<bool>(use_priority_queue)){
                     m_tasks.reserve(numThreads);
-                }//end if constexpr (use_priority_queue)
+                }//end if constexpr (static_cast<bool>(use_priority_queue))
                 //--------------------------
             }// end ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
             //--------------------------
@@ -557,7 +578,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -586,7 +607,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
             queue(F&& f, Args&&... args){
                 //--------------------------
                 return enqueue(std::forward<F>(f), std::forward<Args>(args)...);
@@ -613,7 +634,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
                 //--------------------------
                 enqueue(std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -622,14 +643,14 @@ namespace ThreadPool{
         protected:
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -654,7 +675,7 @@ namespace ThreadPool{
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -692,7 +713,7 @@ namespace ThreadPool{
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
-                    using TaskType = std::conditional_t<use_priority_queue, ThreadTask, std::function<void()>>;
+                    using TaskType = std::conditional_t<static_cast<bool>(use_priority_queue), ThreadTask, std::function<void()>>;
                     TaskType task;
                     //--------------------------
                     {// being Append tasks 
@@ -713,40 +734,40 @@ namespace ThreadPool{
                             //--------------------------
                         }// end if (stoken.stop_requested() and m_tasks.empty())
                         //--------------------------
-                        if constexpr (use_priority_queue){
+                        if constexpr (static_cast<bool>(use_priority_queue)){
                             task = std::move(m_tasks.pop_top().value());
                         } else{
                             task = std::move(m_tasks.front());
                             m_tasks.pop_front();
-                        }// end if constexpr (use_priority_queue)
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
                         //--------------------------
                     }// end Append tasks
                     //--------------------------
                     try {
                         //--------------------------
-                        if constexpr (use_priority_queue){
+                        if constexpr (static_cast<bool>(use_priority_queue)){
                             static_cast<void>(task.try_execute());
                         } else{
                             task();
-                        }// end if constexpr (use_priority_queue)
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
                         //--------------------------
                     } // end try
                     catch (const std::exception& e) {
                         //--------------------------
-                        if constexpr (use_priority_queue){
+                        if constexpr (static_cast<bool>(use_priority_queue)){
                             handle_error(std::move(task), e.what());
                         } else{
                             handle_error(e.what());
-                        }// end if constexpr (use_priority_queue)
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
                         //--------------------------
                     } // end catch (const std::exception& e)
                     catch (...) {
                         //--------------------------
-                        if constexpr (use_priority_queue){
+                        if constexpr (static_cast<bool>(use_priority_queue)){
                             handle_error(std::move(task), "Unknown error");
                         } else{
                             handle_error("Unknown error");
-                        }// end if constexpr (use_priority_queue)
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
                         //--------------------------
                     }// end catch (...)
                     //--------------------------
@@ -819,7 +840,7 @@ namespace ThreadPool{
                 //--------------------------
             }//end void stop(void)
             //--------------------------
-            template <bool U = use_priority_queue, typename = std::enable_if_t<U>>
+            template <bool U = static_cast<bool>(use_priority_queue), typename = std::enable_if_t<U>>
             void push_task(ThreadTask&& task){
                 //--------------------------
                 m_tasks.push(std::move(task));
@@ -828,7 +849,7 @@ namespace ThreadPool{
                 //--------------------------
             }// end void push_task(ThreadTask&& task)
             //--------------------------
-            template<typename... Args, bool U = use_priority_queue, typename = std::enable_if_t<U>>
+            template<typename... Args, bool U = static_cast<bool>(use_priority_queue), typename = std::enable_if_t<U>>
             void emplace_task(Args&&... args){
                 //--------------------------
                 m_tasks.emplace(std::forward<Args>(args)...);
@@ -838,7 +859,7 @@ namespace ThreadPool{
             }// end void emplace_task(Args&&... args)
             //--------------------------
             // Method for the case when priority queue is used
-            template <bool U = use_priority_queue, typename std::enable_if_t<U, int> = 0>
+            template <bool U = static_cast<bool>(use_priority_queue), typename std::enable_if_t<U, int> = 0>
             void handle_error(ThreadTask&& task, const char* error){
                 if (task.get_retries() > 0) {
                     //--------------------------
@@ -856,7 +877,7 @@ namespace ThreadPool{
             }// end void handle_error(ThreadTask&& task, const char* error)
             //--------------------------
             // Method for the case when priority queue is NOT used
-            template <bool U = use_priority_queue, typename std::enable_if_t<!U, int> = 0>
+            template <bool U = static_cast<bool>(use_priority_queue), typename std::enable_if_t<!U, int> = 0>
             void handle_error(const char* error){
                 //--------------------------
                 std::cerr << "Error in task: " << error << std::endl;
@@ -873,9 +894,9 @@ namespace ThreadPool{
             //--------------------------
             size_t active_tasks_size(void) const {
                 //--------------------------
-                if constexpr (!use_priority_queue){
+                if constexpr (!static_cast<bool>(use_priority_queue)){
                     std::unique_lock lock(m_mutex);
-                }// end if constexpr (!use_priority_queue){
+                }// end if constexpr (!static_cast<bool>(use_priority_queue)){
                 //--------------------------
                 return m_tasks.size();
                 //--------------------------
@@ -889,7 +910,7 @@ namespace ThreadPool{
             //--------------------------
             std::unordered_set<size_t> m_idle_threads;
             //--------------------------
-            using TaskContainerType = std::conditional_t<use_priority_queue, PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
+            using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
             //--------------------------
             std::jthread m_adjustmentThread;

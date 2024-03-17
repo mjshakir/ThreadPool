@@ -29,7 +29,7 @@ double runWithoutThreadPool(void) {
 
 // Function to run the test with thread pool
 double runWithThreadPool(void) {
-    ThreadPool::ThreadPool<true> _threads(TASKS);
+    ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(TASKS);
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<std::future<double>> _f_results;
     _f_results.reserve(TASKS);
@@ -64,7 +64,7 @@ int main(void)
 {
     
     {
-        ThreadPool::ThreadPool<false> _threads(_size);
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
         std::vector<std::future<int>> results;
         results.reserve(_size);
         for (int i = 0; i < _size; ++i) {
@@ -76,13 +76,13 @@ int main(void)
         }
     }
     {
-        ThreadPool::ThreadPool<false> _threads(_size);
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
         for (size_t i = 0; i < _size; ++i) {
             _threads.queue([](int value) { std::cout << "Print Value:[" << value << "]" << std::endl; }, i);
         }
     }
     {
-        ThreadPool::ThreadPool<true> _threads(_size);
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
         std::vector<std::future<int>> results;
         results.reserve(_size);
         for (int i = 0; i < _size; ++i) {
@@ -94,7 +94,7 @@ int main(void)
         }
     }
     {
-        ThreadPool::ThreadPool<true> _threads(_size);
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
         for (size_t i = 0; i < _size; ++i) {
             _threads.queue(true, [](int value) { std::cout << "Print Value:[" << value << "]" << std::endl; }, i).set_priority(_size-i);
         }

@@ -8,7 +8,7 @@ class ThreadPoolTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Setup necessary resources before each test
-        threadPool = std::make_unique<ThreadPool::ThreadPool<true>>(10); // Assume 4 as default thread count
+        threadPool = std::make_unique<ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY>>(10); // Assume 4 as default thread count
     }
     
     void TearDown() override {
@@ -16,7 +16,7 @@ protected:
         threadPool.reset(); // stop() will be called in the destructor of ThreadPool
     }
     
-    std::unique_ptr<ThreadPool::ThreadPool<true>> threadPool;
+    std::unique_ptr<ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY>> threadPool;
 };
 
 
@@ -67,7 +67,7 @@ TEST_F(ThreadPoolTest, ExecuteTasksCorrectly) {
 
 // Test to ensure that all threads end correctly when ThreadPool is destroyed
 TEST_F(ThreadPoolTest, ThreadsEndCorrectlyOnDestruction) {
-    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<true>>(2);
+    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY>>(2);
     
     // Use promises to get notified when the tasks start
     std::promise<void> task1Started, task2Started;
