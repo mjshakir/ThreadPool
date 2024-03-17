@@ -578,7 +578,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -607,7 +607,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
             queue(F&& f, Args&&... args){
                 //--------------------------
                 return enqueue(std::forward<F>(f), std::forward<Args>(args)...);
@@ -634,7 +634,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
                 //--------------------------
                 enqueue(std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -643,14 +643,14 @@ namespace ThreadPool{
         protected:
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<use_priority_queue, TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -675,7 +675,7 @@ namespace ThreadPool{
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!use_priority_queue && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
