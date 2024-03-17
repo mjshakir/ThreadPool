@@ -76,7 +76,7 @@ namespace ThreadPool{
              * auto result = task.get();  // Will retrieve the result after task execution.
              * @endcode
              */
-            template <typename F, typename... Args> requires use_priority_queue
+            template <typename F, typename... Args> requires static_cast<bool>(use_priority_queue)
             class TaskBuilder {
                 //--------------------------------------------------------------
                 // static_assert(!use_priority_queue, "TaskBuilder can only be used with priority queues disable.");
