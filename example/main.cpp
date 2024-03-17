@@ -76,7 +76,7 @@ int main(void)
         }
     }
     {
-        ThreadPool::ThreadPool<false> _threads(_size);
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
         for (size_t i = 0; i < _size; ++i) {
             _threads.queue([](int value) { std::cout << "Print Value:[" << value << "]" << std::endl; }, i);
         }
