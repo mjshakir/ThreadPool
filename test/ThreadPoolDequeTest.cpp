@@ -16,7 +16,7 @@ protected:
         threadPool.reset(); // stop() will be called in the destructor of ThreadPool
     }
     
-    std::unique_ptr<ThreadPool::ThreadPool<false>> threadPool;
+    std::unique_ptr<ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD>> threadPool;
 };
 
 
@@ -66,7 +66,7 @@ TEST_F(ThreadPoolTest, ExecuteTasksCorrectly) {
 
 // Test to ensure that all threads end correctly when ThreadPool is destroyed
 TEST_F(ThreadPoolTest, ThreadsEndCorrectlyOnDestruction) {
-    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<false>>(2);
+    auto anotherThreadPool = std::make_unique<ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD>>(2);
     
     // Use promises to get notified when the tasks start
     std::promise<void> task1Started, task2Started;
