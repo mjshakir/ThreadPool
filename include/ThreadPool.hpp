@@ -11,6 +11,7 @@
 #include <concepts>
 #include <unordered_set>
 #include <unordered_map>
+#include <cmath>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -786,7 +787,7 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(m_upperThreshold*0.2)) {
+                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::round(m_upperThreshold*0.2))) {
                         //--------------------------
                         size_t _thread_id = *m_idle_threads.begin();
                         //--------------------------
@@ -830,15 +831,13 @@ namespace ThreadPool{
             //--------------------------
             void stop(void){
                 //--------------------------
-                m_adjustmentThread.request_stop();
-                //--------------------------
                 {
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
                     m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    //m_adjustmentThread.request_stop();
+                    m_adjustmentThread.request_stop();
                     //--------------------------
                     if(!m_workers.empty()){ 
                         for (auto &[id, worker] : m_workers) {
