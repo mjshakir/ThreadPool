@@ -792,21 +792,25 @@ namespace ThreadPool{
                         //--------------------------
                         size_t _thread_id = *m_idle_threads.begin();
                         //--------------------------
-                        m_workers.at(_thread_id).request_stop();
-                        m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
-                        //--------------------------
-                        if (m_workers.at(_thread_id).get_stop_token().stop_requested()) {
+                        if(m_workers.contains(_thread_id)){
                             //--------------------------
-                            m_idle_threads.erase(_thread_id);
+                            m_workers.at(_thread_id).request_stop();
+                            m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
                             //--------------------------
-                            lock.unlock(); // Release the lock before joining the thread
+                            if (m_workers.at(_thread_id).get_stop_token().stop_requested()) {
+                                //--------------------------
+                                m_idle_threads.erase(_thread_id);
+                                //--------------------------
+                                lock.unlock(); // Release the lock before joining the thread
+                                //--------------------------
+                                m_workers.at(_thread_id).join();
+                                m_workers.erase(_thread_id);
+                                //--------------------------
+                                lock.lock(); // Reacquire the lock after joining the thread
+                                //--------------------------
+                            }//end if (m_workers.at(_thread_id).get_stop_token().stop_requested())
                             //--------------------------
-                            m_workers.at(_thread_id).join();
-                            m_workers.erase(_thread_id);
-                            //--------------------------
-                            lock.lock(); // Reacquire the lock after joining the thread
-                            //--------------------------
-                        }//end if (m_workers.at(_thread_id).get_stop_token().stop_requested())
+                        }// end if(m_workers.contains(_thread_id))
                     }
                     //--------------------------
                     if (taskCount > workerCount and workerCount < m_upperThreshold) {
