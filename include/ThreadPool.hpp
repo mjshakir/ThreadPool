@@ -708,7 +708,7 @@ namespace ThreadPool{
                     //--------------------------
                     safe_increment(id);
                     //--------------------------
-                    m_workers.emplace(id, [this, id](std::stop_token stoken) {
+                    m_workers.emplace(id, [this, id = id](std::stop_token stoken) {
                         this->worker_function(stoken, id);
                     });
                     //--------------------------
