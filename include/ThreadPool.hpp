@@ -920,7 +920,7 @@ namespace ThreadPool{
             //--------------------------
             std::unordered_map<size_t, std::jthread> m_workers;
             //--------------------------
-            std::unordered_map<size_t> m_idle_threads;
+            std::unordered_set<size_t> m_idle_threads;
             //--------------------------
             using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
