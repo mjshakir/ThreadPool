@@ -916,7 +916,7 @@ namespace ThreadPool{
         private:
             //--------------------------------------------------------------
             const size_t m_upperThreshold;
-            thread_local size_t m_id;
+            size_t m_id;
             //--------------------------
             std::unordered_map<size_t, std::jthread> m_workers;
             //--------------------------
