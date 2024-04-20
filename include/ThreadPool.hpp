@@ -12,6 +12,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <cmath>
+#include <climits>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -703,7 +704,7 @@ namespace ThreadPool{
                 //--------------------------
                 for (size_t i = 0; i < numThreads; ++i) {
                     //--------------------------
-                    ++m_id;
+                    safe_increment(m_id);
                     //--------------------------
                     m_workers.emplace(m_id, [this](std::stop_token stoken) {
                         this->worker_function(stoken, this->m_id);
@@ -713,7 +714,7 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken, const size_t& id){
+            void worker_function(const std::stop_token& stoken, const size_t id){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -787,7 +788,7 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::round(m_upperThreshold*0.2))) {
+                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::ceil(m_upperThreshold*0.2))) {
                         //--------------------------
                         size_t _thread_id = *m_idle_threads.begin();
                         //--------------------------
@@ -911,6 +912,13 @@ namespace ThreadPool{
                 return m_tasks.size();
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
+            //--------------------------
+            void safe_increment(size_t& value) {
+                if (value == std::numeric_limits<size_t>::max()) {
+                    throw std::overflow_error("Maximum value reached");
+                }
+                ++value;
+            }// end void safe_increment(size_t& value)
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
