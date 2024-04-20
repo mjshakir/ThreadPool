@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <cmath>
 #include <climits>
+#include <functional>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -456,7 +457,6 @@ namespace ThreadPool{
             explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upperThreshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_id(0),
                                 m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
                 //--------------------------
                 auto _threads_number = std::clamp( numThreads, m_lowerThreshold, m_upperThreshold);
@@ -700,14 +700,16 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             void create_task(const size_t& numThreads){
                 //--------------------------
+                static thread_local size_t id = 0;
+                //--------------------------
                 m_workers.reserve(m_workers.size() + numThreads);
                 //--------------------------
                 for (size_t i = 0; i < numThreads; ++i) {
                     //--------------------------
-                    safe_increment(m_id);
+                    safe_increment(id);
                     //--------------------------
-                    m_workers.emplace(m_id, [this](std::stop_token stoken) {
-                        this->worker_function(stoken, this->m_id);
+                    m_workers.emplace(id, [this, id](std::stop_token stoken) {
+                        this->worker_function(stoken, id);
                     });
                     //--------------------------
                 }// end  for (size_t i = 0; i < numThreads; ++i)
@@ -790,34 +792,32 @@ namespace ThreadPool{
                     //--------------------------
                     if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::ceil(m_upperThreshold*0.2))) {
                         //--------------------------
-                        size_t _thread_id = *m_idle_threads.begin();
+                        size_t thread_id_ = *m_idle_threads.begin();
                         //--------------------------
-                        if(m_workers.contains(_thread_id)){
+                        m_workers.at(thread_id_).request_stop();
+                        m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
+                        //--------------------------
+                        if (m_workers.at(thread_id_).get_stop_token().stop_requested()) {
                             //--------------------------
-                            m_workers.at(_thread_id).request_stop();
-                            m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
+                            m_idle_threads.erase(thread_id_);
                             //--------------------------
-                            if (m_workers.at(_thread_id).get_stop_token().stop_requested()) {
-                                //--------------------------
-                                m_idle_threads.erase(_thread_id);
-                                //--------------------------
-                                lock.unlock(); // Release the lock before joining the thread
-                                //--------------------------
-                                m_workers.at(_thread_id).join();
-                                m_workers.erase(_thread_id);
-                                //--------------------------
-                                lock.lock(); // Reacquire the lock after joining the thread
-                                //--------------------------
-                            }//end if (m_workers.at(_thread_id).get_stop_token().stop_requested())
+                            lock.unlock(); // Release the lock before joining the thread
                             //--------------------------
-                        }// end if(m_workers.contains(_thread_id))
-                    }
+                            m_workers.at(thread_id_).join();
+                            m_workers.erase(thread_id_);
+                            //--------------------------
+                            lock.lock(); // Reacquire the lock after joining the thread
+                            //--------------------------
+                        }//end if (m_workers.at(thread_id_).get_stop_token().stop_requested())
+                        //--------------------------
+                    }// end if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::ceil(m_upperThreshold*0.2)))
                     //--------------------------
                     if (taskCount > workerCount and workerCount < m_upperThreshold) {
                         create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
                     }// if (taskCount > workerCount and workerCount < m_upperThreshold)
                     //--------------------------
                 }
+                //--------------------------
                 m_allStoppedCondition.notify_one();
                 //--------------------------
             }// end void adjustWorkers(void)
@@ -927,7 +927,6 @@ namespace ThreadPool{
         private:
             //--------------------------------------------------------------
             const size_t m_upperThreshold;
-            size_t m_id;
             //--------------------------
             std::unordered_map<size_t, std::jthread> m_workers;
             //--------------------------
