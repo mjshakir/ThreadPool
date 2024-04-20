@@ -702,7 +702,7 @@ namespace ThreadPool{
                 //--------------------------
                 for (size_t i = 0; i < numThreads; ++i) {
                     //--------------------------
-                    m_id++;
+                    ++m_id;
                     //--------------------------
                     m_workers.emplace(m_id, [this](std::stop_token stoken) {
                         this->worker_function(stoken, this->m_id);
@@ -712,7 +712,7 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken, const size_t id){
+            void worker_function(const std::stop_token& stoken, const size_t& id){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -830,7 +830,7 @@ namespace ThreadPool{
             //--------------------------
             void stop(void){
                 //--------------------------
-                // m_adjustmentThread.request_stop();
+                m_adjustmentThread.request_stop();
                 //--------------------------
                 {
                     //--------------------------
@@ -838,7 +838,7 @@ namespace ThreadPool{
                     //--------------------------
                     m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    m_adjustmentThread.request_stop();
+                    //m_adjustmentThread.request_stop();
                     //--------------------------
                     if(!m_workers.empty()){ 
                         for (auto &[id, worker] : m_workers) {
