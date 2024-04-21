@@ -430,7 +430,7 @@ namespace ThreadPool{
              * Internally, the ThreadPool will keep track of tasks that have failed, been retried, 
              * or completed successfully.
              * 
-             * @param numThreads Desired number of worker threads. This number will be clamped 
+             * @param number_threads Desired number of worker threads. This number will be clamped 
              * between the system's predefined lower and upper thresholds.
              *
              * @example
@@ -454,20 +454,20 @@ namespace ThreadPool{
              * In cases where the provided number is greater than the number of hardware threads or less than the lower threshold,
              * it will be adjusted accordingly.
              */
-            explicit ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
-                            :   m_upperThreshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
+            explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
+                            :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
                                 m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
                 //--------------------------
-                auto _threads_number = std::clamp( numThreads, m_lowerThreshold, m_upperThreshold);
+                auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
                 m_idle_threads.reserve(_threads_number);
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (static_cast<bool>(use_priority_queue)){
-                    m_tasks.reserve(numThreads);
+                    m_tasks.reserve(number_threads);
                 }//end if constexpr (static_cast<bool>(use_priority_queue))
                 //--------------------------
-            }// end ThreadPool(const size_t& numThreads = static_cast<size_t>(std::thread::hardware_concurrency()))
+            }// end ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
             //--------------------------
             ThreadPool(const ThreadPool&)            = delete;
             ThreadPool& operator=(const ThreadPool&) = delete;
@@ -698,23 +698,23 @@ namespace ThreadPool{
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            void create_task(const size_t& numThreads){
+            void create_task(const size_t& number_threads){
                 //--------------------------
                 static thread_local size_t id = 0;
                 //--------------------------
-                m_workers.reserve(m_workers.size() + numThreads);
+                m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
-                for (size_t i = 0; i < numThreads; ++i) {
+                for (size_t i = 0; i < number_threads; ++i) {
                     //--------------------------
                     safe_increment(id);
                     //--------------------------
-                    m_workers.emplace(id, [this, id = id](std::stop_token stoken) {
-                        this->worker_function(stoken, id);
+                    m_workers.emplace(id, [this, local_id = id](std::stop_token stoken) {
+                        this->worker_function(stoken, local_id);
                     });
                     //--------------------------
-                }// end  for (size_t i = 0; i < numThreads; ++i)
+                }// end  for (size_t i = 0; i < number_threads; ++i)
                 //--------------------------
-            }//end void ThreadPool::ThreadPool::create_task(const size_t& numThreads)
+            }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
             void worker_function(const std::stop_token& stoken, const size_t id){
                 //--------------------------
@@ -784,13 +784,13 @@ namespace ThreadPool{
             //--------------------------
             void adjustWorkers(void){
                 //--------------------------
-                const size_t taskCount = active_tasks_size(), workerCount = thread_Workers_size();
+                const size_t task_count = active_tasks_size(), worker_count = thread_Workers_size();
                 //--------------------------
                 {
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::ceil(m_upperThreshold*0.2))) {
+                    if (worker_count > task_count and !m_idle_threads.empty() and worker_count > static_cast<size_t>(std::ceil(m_upper_threshold*0.2))) {
                         //--------------------------
                         size_t thread_id_ = *m_idle_threads.begin();
                         //--------------------------
@@ -810,11 +810,11 @@ namespace ThreadPool{
                             //--------------------------
                         }//end if (m_workers.at(thread_id_).get_stop_token().stop_requested())
                         //--------------------------
-                    }// end if (workerCount > taskCount and !m_idle_threads.empty() and workerCount > static_cast<size_t>(std::ceil(m_upperThreshold*0.2)))
+                    }// end if (worker_count > task_count and !m_idle_threads.empty() and worker_count > static_cast<size_t>(std::ceil(m_upper_threshold*0.2)))
                     //--------------------------
-                    if (taskCount > workerCount and workerCount < m_upperThreshold) {
-                        create_task(std::min(taskCount - workerCount, m_upperThreshold - workerCount));
-                    }// if (taskCount > workerCount and workerCount < m_upperThreshold)
+                    if (task_count > worker_count and worker_count < m_upper_threshold) {
+                        create_task(std::min(task_count - worker_count, m_upper_threshold - worker_count));
+                    }// if (task_count > worker_count and worker_count < m_upper_threshold)
                     //--------------------------
                 }
                 //--------------------------
@@ -926,7 +926,7 @@ namespace ThreadPool{
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
-            const size_t m_upperThreshold;
+            const size_t m_upper_threshold;
             //--------------------------
             std::unordered_map<size_t, std::jthread> m_workers;
             //--------------------------
