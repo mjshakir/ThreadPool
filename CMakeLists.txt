@@ -44,6 +44,10 @@ if(THREADPOOL_STANDALONE_PROJECT)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/lib)
     message(STATUS "Library output directory: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    # Diagnostic output
+    message(STATUS "ARCHIVE_OUTPUT_DIRECTORY: ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+    message(STATUS "LIBRARY_OUTPUT_DIRECTORY: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    message(STATUS "RUNTIME_OUTPUT_DIRECTORY: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 endif()
 #------------------------------------------------------------------------------------------
 # Offer switches for the type of the library and optional builds
@@ -78,6 +82,14 @@ set(THREADPOOL_LIBRARY_NAME "${THREADPOOL_PROJECT_NAME}_lib")
 if(BUILD_THREADPOOL_SHARED_LIBS)
     add_library(${THREADPOOL_LIBRARY_NAME} SHARED ${THREADPOOL_SOURCES})
     # If needed, set properties specific to shared libraries here
+    if(MSVC)
+        set_target_properties(${THREADPOOL_PROJECT_NAME} PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+        OUTPUT_NAME "ThreadPool_threadpool_lib"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+    endif()
 else()
     add_library(${THREADPOOL_LIBRARY_NAME} STATIC ${THREADPOOL_SOURCES})
     # If needed, set properties specific to static libraries here
