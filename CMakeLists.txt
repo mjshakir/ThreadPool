@@ -83,18 +83,6 @@ else()
     # If needed, set properties specific to static libraries here
 endif()
 #------------------------------------------------------------------------------------------
-if(THREADPOOL_STANDALONE_PROJECT)
-    # Ensure the output directories are set
-    set_target_properties(${THREADPOOL_LIBRARY_NAME} PROPERTIES
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    )
-
-    # Verbose configuration to check paths
-    message(STATUS "Library output path: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
-endif()
-#------------------------------------------------------------------------------------------
 target_include_directories(${THREADPOOL_LIBRARY_NAME} PUBLIC 
     $<BUILD_INTERFACE:${THREADPOOL_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
