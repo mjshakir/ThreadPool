@@ -44,6 +44,10 @@ if(THREADPOOL_STANDALONE_PROJECT)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/lib)
     message(STATUS "Library output directory: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    # Diagnostic output
+    message(STATUS "ARCHIVE_OUTPUT_DIRECTORY: ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
+    message(STATUS "LIBRARY_OUTPUT_DIRECTORY: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    message(STATUS "RUNTIME_OUTPUT_DIRECTORY: ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 endif()
 #------------------------------------------------------------------------------------------
 # Offer switches for the type of the library and optional builds
@@ -118,6 +122,10 @@ if(MSVC)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_link_options(${THREADPOOL_LIBRARY_NAME} PRIVATE /DEBUG)
     endif()
+
+    set_target_properties(${THREADPOOL_LIBRARY_NAME} PROPERTIES
+        WINDOWS_EXPORT_ALL_SYMBOLS TRUE
+    )
 else()
     # For non-MSVC compilers
     target_compile_options(${THREADPOOL_LIBRARY_NAME} PRIVATE 
