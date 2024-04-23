@@ -929,7 +929,7 @@ namespace ThreadPool{
             std::optional<size_t> safe_increment(const size_t& value) {
                 //--------------------------
                 if (value == std::numeric_limits<size_t>::max()) {
-                    std::err << "Maximum value reached" << std::endl;
+                    std::cerr << "Maximum Thread IDs have been reached" << std::endl;
                     return std::nullopt;
                 }// end if (value == std::numeric_limits<size_t>::max())
                 //--------------------------
