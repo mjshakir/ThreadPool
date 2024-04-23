@@ -933,9 +933,9 @@ namespace ThreadPool{
                     return std::nullopt;
                 }// end if (value == std::numeric_limits<size_t>::max())
                 //--------------------------
-                return ++value;
+                return value + 1;
                 //--------------------------
-            }// end void safe_increment(size_t& value)
+            }// end std::optional<size_t> safe_increment(const size_t& value)
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
