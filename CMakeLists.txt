@@ -96,9 +96,9 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 #------------------------------------------------------------------------------------------
 # Set THREADPOOL_LIBRARIES variable
 if(THREADPOOL_STANDALONE_PROJECT)
-    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::${PROJECT_NAME})
+    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::threadpool)
 else()
-    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::${PROJECT_NAME} PARENT_SCOPE)
+    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::threadpool PARENT_SCOPE)
 endif()
 message(STATUS "THREADPOOL_LIBRARIES: ${THREADPOOL_LIBRARIES}")
 #------------------------------------------------------------------------------------------
