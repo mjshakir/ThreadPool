@@ -893,7 +893,7 @@ namespace ThreadPool{
                         for (auto &[id, worker] : m_workers) {
                             worker.request_stop(); // request each worker to stop
                         }// end for (auto &worker : m_workers)
-                    }
+                    }// end if(!m_workers.empty())
                 }
                 //--------------------------
                 m_taskAvailableCondition.notify_all();
