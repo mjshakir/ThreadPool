@@ -721,7 +721,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            void create_task(const size_t& number_threads){
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::ENABLED, void> create_task(const size_t& number_threads){
                 //--------------------------
                 static thread_local size_t id = 0;
                 //--------------------------
@@ -745,7 +746,25 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken, const size_t id){
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::DISABLED, void> create_task(const size_t& number_threads){
+                //--------------------------
+                static thread_local size_t id = 0;
+                //--------------------------
+                m_workers.reserve(m_workers.size() + number_threads);
+                //--------------------------
+                for (size_t i = 0; i < number_threads; ++i) {
+                    //--------------------------
+                    m_workers.emplace_back([this](std::stop_token stoken) {
+                        this->worker_function(stoken);
+                    });
+                    //--------------------------
+                }// end  for (size_t i = 0; i < number_threads; ++i)
+                //--------------------------
+            }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
+            //--------------------------
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::ENABLED, void> worker_function(const std::stop_token& stoken, const size_t id){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -756,15 +775,74 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        if constexpr (static_cast<bool>(use_adoptive_control)){
-                            m_idle_threads.insert(id);
-                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                        m_idle_threads.insert(id);
                         //--------------------------
                         m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        if constexpr (static_cast<bool>(use_adoptive_control)){
-                            m_idle_threads.erase(id);
-                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                        m_idle_threads.erase(id);
+                        //--------------------------
+                        if (stoken.stop_requested() or m_tasks.empty()) {
+                            //--------------------------
+                            m_allStoppedCondition.notify_one();
+                            //--------------------------
+                            return;
+                            //--------------------------
+                        }// end if (stoken.stop_requested() and m_tasks.empty())
+                        //--------------------------
+                        if constexpr (static_cast<bool>(use_priority_queue)){
+                            task = std::move(m_tasks.pop_top().value());
+                        } else{
+                            task = std::move(m_tasks.front());
+                            m_tasks.pop_front();
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
+                        //--------------------------
+                    }// end Append tasks
+                    //--------------------------
+                    try {
+                        //--------------------------
+                        if constexpr (static_cast<bool>(use_priority_queue)){
+                            static_cast<void>(task.try_execute());
+                        } else{
+                            task();
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
+                        //--------------------------
+                    } // end try
+                    catch (const std::exception& e) {
+                        //--------------------------
+                        if constexpr (static_cast<bool>(use_priority_queue)){
+                            handle_error(std::move(task), e.what());
+                        } else{
+                            handle_error(e.what());
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
+                        //--------------------------
+                    } // end catch (const std::exception& e)
+                    catch (...) {
+                        //--------------------------
+                        if constexpr (static_cast<bool>(use_priority_queue)){
+                            handle_error(std::move(task), "Unknown error");
+                        } else{
+                            handle_error("Unknown error");
+                        }// end if constexpr (static_cast<bool>(use_priority_queue))
+                        //--------------------------
+                    }// end catch (...)
+                    //--------------------------
+                }// end while (!stoken.stop_requested())
+                //--------------------------
+            }// end void worker_function(void)
+            //--------------------------
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::DISABLED, void> worker_function(const std::stop_token& stoken){
+                //--------------------------
+                while (!stoken.stop_requested()) {
+                    //--------------------------
+                    using TaskType = std::conditional_t<static_cast<bool>(use_priority_queue), ThreadTask, std::function<void()>>;
+                    TaskType task;
+                    //--------------------------
+                    {// being Append tasks 
+                        //--------------------------
+                        std::unique_lock lock(m_mutex);
+                        //--------------------------
+                        m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
@@ -962,7 +1040,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------
-            std::optional<size_t> safe_increment(const size_t& value) {
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::ENABLED, std::optional<size_t>> safe_increment(const size_t& value) {
                 //--------------------------
                 if (value == std::numeric_limits<size_t>::max()) {
                     std::cerr << "Maximum Thread IDs have been reached" << std::endl;
@@ -977,7 +1056,7 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            std::unordered_map<size_t, std::jthread> m_workers;
+            typename std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>> m_workers;
             //--------------------------
             typename std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_set<size_t>, std::nullptr_t> m_idle_threads;
             //--------------------------
