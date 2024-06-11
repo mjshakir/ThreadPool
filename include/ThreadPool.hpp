@@ -484,7 +484,6 @@ namespace ThreadPool{
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold){
                 //--------------------------
                 auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
-                m_idle_threads.reserve(_threads_number);
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (static_cast<bool>(use_priority_queue)){
