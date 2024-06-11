@@ -858,6 +858,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjust_workers(void)
             //--------------------------
+            std::enable_if_t<!static_cast<bool>(use_adoptive_control), void> adjust_workers(void) = delete;
+            //--------------------------
             std::enable_if_t<static_cast<bool>(use_adoptive_control), void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
@@ -869,6 +871,8 @@ namespace ThreadPool{
                 }// end while (!stoken.stop_requested())
                 //--------------------------
             }// end void adjustment_thread_function(const std::stop_token& stoken)
+            //--------------------------
+            std::enable_if_t<!static_cast<bool>(use_adoptive_control), void> adjustment_thread_function(const std::stop_token& stoken) = delete;
             //--------------------------
             void stop(void){
                 //--------------------------
