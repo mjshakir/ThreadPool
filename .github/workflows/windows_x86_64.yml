@@ -16,6 +16,25 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
+    
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+    
+    - name: Install CMake
+      run: |
+        vcpkg search cmake
+        vcpkg install cmake:x64-windows
+        vcpkg integrate install
+    
+    - name: Install GTest
+      run: |
+        vcpkg search gtest
+        vcpkg install gtest:x64-windows
+        vcpkg integrate install
 
     - name: Setup CMake and Ninja
       uses: lukka/get-cmake@v3.21.1
@@ -50,7 +69,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_msvc.outputs.skip_step != 'true'
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_THREADPOOL_SHARED_LIBS=ON
+      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DBUILD_THREADPOOL_SHARED_LIBS=ON -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     - name: Build
       run: cmake --build build --config ${{ env.BUILD_TYPE }} --verbose
