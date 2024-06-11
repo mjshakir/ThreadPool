@@ -878,7 +878,9 @@ namespace ThreadPool{
                     //--------------------------
                     m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    m_adjustmentThread.request_stop();
+                    if constexpr (static_cast<bool>(use_adoptive_control)) {
+                        m_adjustmentThread.request_stop();
+                    } // end if constexpr (static_cast<bool>(use_adoptive_control))
                     //--------------------------
                     if(!m_workers.empty()){ 
                         for (auto &[id, worker] : m_workers) {
