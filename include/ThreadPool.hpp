@@ -968,9 +968,15 @@ namespace ThreadPool{
                     } // end if constexpr (static_cast<bool>(use_adoptive_control))
                     //--------------------------
                     if(!m_workers.empty()){ 
-                        for (auto &[id, worker] : m_workers) {
-                            worker.request_stop(); // request each worker to stop
-                        }// end for (auto &worker : m_workers)
+                        if constexpr (static_cast<bool>(use_adoptive_control)) {
+                            for (auto &[id, worker] : m_workers) {
+                                worker.request_stop(); // request each worker to stop
+                            }// end for (auto &worker : m_workers)
+                        } else {
+                            for (auto &worker : m_workers) {
+                                worker.request_stop(); // request each worker to stop
+                            }// end for (auto &worker : m_workers)
+                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
                     }// end if(!m_workers.empty())
                 }
                 //--------------------------
