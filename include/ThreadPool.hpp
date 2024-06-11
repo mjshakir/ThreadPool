@@ -816,7 +816,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void worker_function(void)
             //--------------------------
-            std::enable_if_t<static_cast<bool>(use_adoptive_control), void> adjust_workers(void){
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::ENABLED, void> adjust_workers(void){
                 //--------------------------
                 static const size_t threshold_ = static_cast<size_t>(std::ceil(m_upper_threshold*0.2));
                 //--------------------------
@@ -858,9 +859,11 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjust_workers(void)
             //--------------------------
-            std::enable_if_t<!static_cast<bool>(use_adoptive_control), void> adjust_workers(void) = delete;
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::DISABLED, void> adjust_workers(void) = delete;
             //--------------------------
-            std::enable_if_t<static_cast<bool>(use_adoptive_control), void> adjustment_thread_function(const std::stop_token& stoken){
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::ENABLED, void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -872,7 +875,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
-            std::enable_if_t<!static_cast<bool>(use_adoptive_control), void> adjustment_thread_function(const std::stop_token& stoken) = delete;
+            template <AdoptiveControl U = use_adoptive_control>
+            std::enable_if_t<U == AdoptiveControl::DISABLED, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
             //--------------------------
             void stop(void){
                 //--------------------------
