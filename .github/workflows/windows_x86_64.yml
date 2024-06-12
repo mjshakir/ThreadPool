@@ -63,7 +63,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_msvc.outputs.skip_step != 'true'
-      run: cmake -S . -B build -DBUILD_THREADPOOL_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
+      run: cmake -S . -B build -DBUILD_THREADPOOL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}  -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     - name: Build
       run: cmake --build build --config ${{ env.BUILD_TYPE }} --verbose
