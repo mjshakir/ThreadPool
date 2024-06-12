@@ -464,9 +464,7 @@ namespace ThreadPool{
             explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_adjustmentThread(static_cast<bool>(use_adoptive_control) ?
-                                    std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}) :
-                                    std::nullopt){
+                                m_adjustmentThread(assign_adoptive_thread()){
                 //--------------------------
                 auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
                 if constexpr (static_cast<bool>(use_adoptive_control)){
@@ -1043,6 +1041,15 @@ namespace ThreadPool{
                 return value + 1UL;
                 //--------------------------
             }// end std::optional<size_t> safe_increment(const size_t& value)
+            //--------------------------
+            constexpr std::optional<std::jthread> assign_adoptive_thread(void){
+                //--------------------------
+                if constexpr (static_cast<bool>(use_adoptive_control)){
+                    return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
+                }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                return std::nullopt;
+                //--------------------------
+            }// end constexpr std::optional<std::jthread> assign_adoptive_thread(void)
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
