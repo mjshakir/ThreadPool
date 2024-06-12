@@ -74,4 +74,4 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest -C Release
+      run: ctest --output-on-failure -C Release
