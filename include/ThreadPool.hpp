@@ -748,7 +748,7 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken, const std::optional<size_t> id){
+            void worker_function(const std::stop_token& stoken, const std::optional<size_t> id = std::nullopt){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
