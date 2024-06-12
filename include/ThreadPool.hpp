@@ -15,7 +15,6 @@
 #include <limits>
 #include <functional>
 #include <optional>
-#include <cstddef>
 #include <mutex>
 //--------------------------------------------------------------
 // User Defined library
@@ -462,28 +461,17 @@ namespace ThreadPool{
              * In cases where the provided number is greater than the number of hardware threads or less than the lower threshold,
              * it will be adjusted accordingly.
              */
-            template <AdoptiveControl U = use_adoptive_control, typename std::enable_if<U == AdoptiveControl::ENABLED, int>::type = 0>
             explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
+                                m_adjustmentThread(static_cast<bool>(use_adoptive_control) ?
+                                    std::optional<std::jthread>(&ThreadPool::adjustment_thread_function, this, std::placeholders::_1) :
+                                    std::nullopt){
                 //--------------------------
                 auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
-                m_idle_threads.reserve(_threads_number);
-                create_task(_threads_number);
-                //--------------------------
-                if constexpr (static_cast<bool>(use_priority_queue)){
-                    m_tasks.reserve(number_threads);
-                }//end if constexpr (static_cast<bool>(use_priority_queue))
-                //--------------------------
-            }// end ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
-            //--------------------------
-            template <AdoptiveControl U = use_adoptive_control, typename std::enable_if<U == AdoptiveControl::DISABLED, int>::type = 0>
-            explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
-                            :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
-                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold){
-                //--------------------------
-                auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
+                if constexpr (static_cast<bool>(use_adoptive_control)){
+                    m_idle_threads->reserve(_threads_number);
+                }//end if constexpr (static_cast<bool>(use_adoptive_control
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (static_cast<bool>(use_priority_queue)){
@@ -773,11 +761,11 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        m_idle_threads.insert(id);
+                        m_idle_threads->insert(id);
                         //--------------------------
                         m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        m_idle_threads.erase(id);
+                        m_idle_threads->erase(id);
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
@@ -902,16 +890,16 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (worker_count > task_count and !m_idle_threads.empty() and worker_count > threshold_) {
+                    if (worker_count > task_count and !m_idle_threads->empty() and worker_count > threshold_) {
                         //--------------------------
-                        size_t thread_id_ = *m_idle_threads.begin();
+                        size_t thread_id_ = *m_idle_threads->begin();
                         //--------------------------
                         m_workers.at(thread_id_).request_stop();
                         m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
                         //--------------------------
                         if (m_workers.at(thread_id_).get_stop_token().stop_requested()) {
                             //--------------------------
-                            m_idle_threads.erase(thread_id_);
+                            m_idle_threads->erase(thread_id_);
                             //--------------------------
                             lock.unlock(); // Release the lock before joining the thread
                             //--------------------------
@@ -962,7 +950,7 @@ namespace ThreadPool{
                     m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
                     if constexpr (static_cast<bool>(use_adoptive_control)) {
-                        m_adjustmentThread.request_stop();
+                        m_adjustmentThread.value().request_stop();
                     } // end if constexpr (static_cast<bool>(use_adoptive_control))
                     //--------------------------
                     if(!m_workers.empty()){ 
@@ -1060,14 +1048,15 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            typename std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>> m_workers;
+            using WorkersType = std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
+            WorkersType m_workers;
             //--------------------------
-            typename std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_set<size_t>, std::nullptr_t> m_idle_threads;
+            std::optional<std::unordered_set<size_t>> m_idle_threads;
             //--------------------------
             using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
             //--------------------------
-            typename std::conditional_t<static_cast<bool>(use_adoptive_control), std::jthread, std::nullptr_t> m_adjustmentThread;
+            std::optional<std::jthread> m_adjustmentThread;
             //--------------------------
             mutable std::mutex m_mutex;
             //--------------------------
