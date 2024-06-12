@@ -749,8 +749,6 @@ namespace ThreadPool{
             template <AdoptiveControl U = use_adoptive_control>
             std::enable_if_t<U == AdoptiveControl::DISABLED, void> create_task(const size_t& number_threads){
                 //--------------------------
-                static thread_local size_t id = 0;
-                //--------------------------
                 m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
                 for (size_t i = 0; i < number_threads; ++i) {
