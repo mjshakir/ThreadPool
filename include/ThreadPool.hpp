@@ -748,8 +748,7 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::ENABLED, void> worker_function(const std::stop_token& stoken, const size_t id){
+            void worker_function(const std::stop_token& stoken, const std::optional<size_t> id){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -760,74 +759,15 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        m_idle_threads->insert(id);
+                        if constexpr (static_cast<bool>(use_adoptive_control)){
+                            m_idle_threads->insert(id.value());
+                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
                         //--------------------------
                         m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        m_idle_threads->erase(id);
-                        //--------------------------
-                        if (stoken.stop_requested() or m_tasks.empty()) {
-                            //--------------------------
-                            m_allStoppedCondition.notify_one();
-                            //--------------------------
-                            return;
-                            //--------------------------
-                        }// end if (stoken.stop_requested() and m_tasks.empty())
-                        //--------------------------
-                        if constexpr (static_cast<bool>(use_priority_queue)){
-                            task = std::move(m_tasks.pop_top().value());
-                        } else{
-                            task = std::move(m_tasks.front());
-                            m_tasks.pop_front();
-                        }// end if constexpr (static_cast<bool>(use_priority_queue))
-                        //--------------------------
-                    }// end Append tasks
-                    //--------------------------
-                    try {
-                        //--------------------------
-                        if constexpr (static_cast<bool>(use_priority_queue)){
-                            static_cast<void>(task.try_execute());
-                        } else{
-                            task();
-                        }// end if constexpr (static_cast<bool>(use_priority_queue))
-                        //--------------------------
-                    } // end try
-                    catch (const std::exception& e) {
-                        //--------------------------
-                        if constexpr (static_cast<bool>(use_priority_queue)){
-                            handle_error(std::move(task), e.what());
-                        } else{
-                            handle_error(e.what());
-                        }// end if constexpr (static_cast<bool>(use_priority_queue))
-                        //--------------------------
-                    } // end catch (const std::exception& e)
-                    catch (...) {
-                        //--------------------------
-                        if constexpr (static_cast<bool>(use_priority_queue)){
-                            handle_error(std::move(task), "Unknown error");
-                        } else{
-                            handle_error("Unknown error");
-                        }// end if constexpr (static_cast<bool>(use_priority_queue))
-                        //--------------------------
-                    }// end catch (...)
-                    //--------------------------
-                }// end while (!stoken.stop_requested())
-                //--------------------------
-            }// end void worker_function(void)
-            //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::DISABLED, void> worker_function(const std::stop_token& stoken){
-                //--------------------------
-                while (!stoken.stop_requested()) {
-                    //--------------------------
-                    using TaskType = std::conditional_t<static_cast<bool>(use_priority_queue), ThreadTask, std::function<void()>>;
-                    TaskType task;
-                    //--------------------------
-                    {// being Append tasks 
-                        //--------------------------
-                        std::unique_lock lock(m_mutex);
-                        //--------------------------
-                        m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
+                        if constexpr (static_cast<bool>(use_adoptive_control)){
+                            m_idle_threads->erase(id.value());
+                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
@@ -1048,6 +988,7 @@ namespace ThreadPool{
                 if constexpr (static_cast<bool>(use_adoptive_control)){
                     return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
                 }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                //--------------------------
                 return std::nullopt;
                 //--------------------------
             }// end constexpr std::optional<std::jthread> assign_adoptive_thread(void)
