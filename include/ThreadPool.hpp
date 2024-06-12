@@ -724,7 +724,7 @@ namespace ThreadPool{
             template <AdoptiveControl U = use_adoptive_control>
             std::enable_if_t<U == AdoptiveControl::ENABLED, void> create_task(const size_t& number_threads){
                 //--------------------------
-                static thread_local size_t id = 0;
+                static thread_local size_t id = 0UL;
                 //--------------------------
                 m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
@@ -1052,7 +1052,7 @@ namespace ThreadPool{
                     return std::nullopt;
                 }// end if (value == std::numeric_limits<size_t>::max())
                 //--------------------------
-                return value + 1;
+                return value + 1UL;
                 //--------------------------
             }// end std::optional<size_t> safe_increment(const size_t& value)
             //--------------------------------------------------------------
