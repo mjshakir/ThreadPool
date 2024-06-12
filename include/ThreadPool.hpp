@@ -465,7 +465,7 @@ namespace ThreadPool{
                             :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
                                 m_adjustmentThread(static_cast<bool>(use_adoptive_control) ?
-                                    [this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);} :
+                                    std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}) :
                                     std::nullopt){
                 //--------------------------
                 auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
