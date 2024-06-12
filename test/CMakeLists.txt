@@ -1,6 +1,7 @@
+# Try Finding Installed Google Test
 find_package(GTest QUIET)
 
-# If not found, fetch it from the repository
+# Use Installed Version or Fetch
 if(NOT GTest_FOUND)
     include(FetchContent)
     FetchContent_Declare(
@@ -18,21 +19,38 @@ if(NOT GTest_FOUND)
     add_library(GTest::Main ALIAS gtest_main)
 endif()
 
-macro(package_add_test TESTNAME)
-    add_executable(${TESTNAME} ${ARGN})
-    target_link_libraries(${TESTNAME} GTest::GTest GTest::Main ${PROJECT_NAME})
-    add_test(NAME ${TESTNAME} COMMAND ${TESTNAME})
-    set_target_properties(${TESTNAME} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/testBin)
-    add_dependencies(${TESTNAME} ${PROJECT_NAME})
-endmacro()
+# Function to setup a test executable
+function(create_test_target TARGET_NAME SOURCE_FILE)
+    # Correcting the file path according to the directory structure
+    add_executable(${TARGET_NAME} ${SOURCE_FILE})
+    target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
+    
+    # Set the output directories for test executables
+    set_target_properties(${TARGET_NAME} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/testbin
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/testlib
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/testlib
+    )
+    
+    # Link the main project library and Google Test
+    target_link_libraries(${TARGET_NAME} PRIVATE ${PROJECT_NAME})
+    if(GTest_FOUND)
+        target_link_libraries(${TARGET_NAME} PRIVATE GTest::GTest GTest::Main)
+    else()
+        target_link_libraries(${TARGET_NAME} PRIVATE gtest gtest_main)
+    endif()
 
-package_add_test(PriorityQueueTest PriorityQueueTest.cpp)
-package_add_test(PriorityQueueDequeTest PriorityQueueDequeTest.cpp)
-package_add_test(PriorityQueueStructTest PriorityQueueStructTest.cpp)
-package_add_test(PriorityQueueDegueStructTest PriorityQueueDegueStructTest.cpp)
-package_add_test(ThreadTaskTest ThreadTaskTest.cpp)
-package_add_test(ThreadPoolTest ThreadPoolTest.cpp)
-package_add_test(ThreadPoolDisableTest ThreadPoolDisableTest.cpp)
-package_add_test(ThreadPoolDequeTest ThreadPoolDequeTest.cpp)
-package_add_test(ThreadPoolDisableDequeTest ThreadPoolDisableDequeTest.cpp) 
+    # Enable testing and add the test to CTest
+    enable_testing()
+    add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+endfunction()
+
+create_test_target(PriorityQueueTest PriorityQueueTest.cpp)
+create_test_target(PriorityQueueDequeTest PriorityQueueDequeTest.cpp)
+create_test_target(PriorityQueueStructTest PriorityQueueStructTest.cpp)
+create_test_target(PriorityQueueDegueStructTest PriorityQueueDegueStructTest.cpp)
+create_test_target(ThreadTaskTest ThreadTaskTest.cpp)
+create_test_target(ThreadPoolTest ThreadPoolTest.cpp)
+create_test_target(ThreadPoolDisableTest ThreadPoolDisableTest.cpp)
+create_test_target(ThreadPoolDequeTest ThreadPoolDequeTest.cpp)
+create_test_target(ThreadPoolDisableDequeTest ThreadPoolDisableDequeTest.cpp) 
