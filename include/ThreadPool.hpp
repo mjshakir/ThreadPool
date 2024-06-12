@@ -468,6 +468,7 @@ namespace ThreadPool{
                 //--------------------------
                 auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
                 if constexpr (static_cast<bool>(use_adoptive_control)){
+                    m_idle_threads.emplace();
                     m_idle_threads->reserve(_threads_number);
                 }//end if constexpr (static_cast<bool>(use_adoptive_control
                 create_task(_threads_number);
@@ -948,7 +949,7 @@ namespace ThreadPool{
                     m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
                     if constexpr (static_cast<bool>(use_adoptive_control)) {
-                        m_adjustmentThread.value().request_stop();
+                        m_adjustmentThread->request_stop();
                     } // end if constexpr (static_cast<bool>(use_adoptive_control))
                     //--------------------------
                     if(!m_workers.empty()){ 
