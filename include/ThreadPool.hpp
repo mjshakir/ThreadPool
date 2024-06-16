@@ -862,7 +862,7 @@ namespace ThreadPool{
             std::enable_if_t<!U, void> adjust_workers(void) = delete;
             //--------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<U > 0UL, void> adjustment_thread_function(const std::stop_token& stoken){
+            std::enable_if_t<(U > 0UL), void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -969,7 +969,7 @@ namespace ThreadPool{
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<U > 0UL, std::optional<size_t>> safe_increment(const size_t& value) {
+            std::enable_if_t<(U > 0UL), std::optional<size_t>> safe_increment(const size_t& value) {
                 //--------------------------
                 if (value == std::numeric_limits<size_t>::max()) {
                     std::cerr << "Maximum Thread IDs have been reached" << std::endl;
