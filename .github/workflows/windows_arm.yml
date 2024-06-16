@@ -15,6 +15,19 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
 
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=$(pwd)/vcpkg/scripts/buildsystems/vcpkg.cmake" >> $GITHUB_ENV
+    
+    - name: Install GTest
+      run: |
+        vcpkg search gtest
+        vcpkg install gtest:arm64-windows
+        vcpkg integrate install
+
     - name: Setup CMake and Ninja
       uses: lukka/get-cmake@v3.21.1
 
@@ -51,7 +64,7 @@ jobs:
 
     - name: Configure CMake
       if: steps.check_msvc.outputs.skip_step != 'true'
-      run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      run: cmake -S . -B build -DBUILD_THREADPOOL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake
     
     - name: List build directory contents
       run: ls -R build/
@@ -61,4 +74,4 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest -C Release
+      run: ctest --output-on-failure -C Release

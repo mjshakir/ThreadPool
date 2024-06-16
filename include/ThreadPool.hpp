@@ -15,6 +15,7 @@
 #include <limits>
 #include <functional>
 #include <optional>
+#include <mutex>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -50,11 +51,17 @@ namespace ThreadPool{
     /**
      * @class ThreadPool
      * @brief A thread pool implementation that manages worker threads.
-     *
      * The ThreadPool class handles the creation, management, and destruction of threads. 
      * It also provides functionality to queue tasks for execution by the worker threads.
+     *
+     * @tparam use_priority_queue A boolean value indicating whether the ThreadPool should use priority queues or deque
+     * for task management. If set to true, the ThreadPool will use priority queues to manage tasks based on their priority.
+     * If set to false, the ThreadPool will use a deque to manage tasks in a first-come, first-served manner.
+     * @tparam adoptive_tick The time interval (in nanoseconds) after which idle threads should be destroyed in the ThreadPool.
+     * If set to 0, the ThreadPool will not destroy idle threads. This parameter is optional and defaults to 1,000,000 nanoseconds (1 millisecond).
+     *
      */
-    template <ThreadMode use_priority_queue = ThreadMode::STANDARD>
+    template <ThreadMode use_priority_queue = ThreadMode::STANDARD, size_t adoptive_tick = 1000000UL>
     class ThreadPool {
         //-------------------------------------------------------------
         protected:
@@ -426,7 +433,8 @@ namespace ThreadPool{
              * @details The constructor initializes a ThreadPool with a specified number of worker threads.
              * The actual number of worker threads will be clamped between the system's lower
              * threshold and either the upper threshold or the number of hardware threads available,
-             * whichever is smaller.
+             * whichever is smaller. The ThreadPool will manage these worker threads and execute tasks 
+             * that are queued to it.
              *
              * Internally, the ThreadPool will keep track of tasks that have failed, been retried, 
              * or completed successfully.
@@ -457,11 +465,16 @@ namespace ThreadPool{
              */
             explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
-                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_adjustmentThread([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);}){
+                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lower_threshold),
+                                m_adoptive_thread(assign_adoptive_thread()){
                 //--------------------------
-                auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
-                m_idle_threads.reserve(_threads_number);
+                auto _threads_number = std::clamp(number_threads, m_lower_threshold, m_upper_threshold);
+                //--------------------------
+                if constexpr (adoptive_tick > 0UL){
+                    m_idle_threads.emplace();
+                    m_idle_threads->reserve(_threads_number);
+                }//end if constexpr (adoptive_tick > 0UL)
+                //--------------------------
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (static_cast<bool>(use_priority_queue)){
@@ -672,7 +685,7 @@ namespace ThreadPool{
                     m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
                 }// end adding task
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
                 return future;
                 //--------------------------
@@ -695,13 +708,14 @@ namespace ThreadPool{
                     m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
                 }// end adding task
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            void create_task(const size_t& number_threads){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), void> create_task(const size_t& number_threads){
                 //--------------------------
-                static thread_local size_t id = 0;
+                static thread_local size_t id = 0UL;
                 //--------------------------
                 m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
@@ -723,7 +737,22 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken, const size_t id){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<!U , void> create_task(const size_t& number_threads){
+                //--------------------------
+                m_workers.reserve(m_workers.size() + number_threads);
+                //--------------------------
+                for (size_t i = 0; i < number_threads; ++i) {
+                    //--------------------------
+                    m_workers.emplace_back([this](std::stop_token stoken) {
+                        this->worker_function(stoken);
+                    });
+                    //--------------------------
+                }// end  for (size_t i = 0; i < number_threads; ++i)
+                //--------------------------
+            }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
+            //--------------------------
+            void worker_function(const std::stop_token& stoken, const std::optional<size_t> id = std::nullopt){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -734,15 +763,19 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        m_idle_threads.insert(id);
+                        if constexpr (adoptive_tick > 0UL){
+                            m_idle_threads->insert(id.value());
+                        }// end if constexpr (adoptive_tick > 0UL)
                         //--------------------------
-                        m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
+                        m_task_available_condition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        m_idle_threads.erase(id);
+                        if constexpr (adoptive_tick > 0UL){
+                            m_idle_threads->erase(id.value());
+                        }// end if constexpr (adoptive_tick > 0UL)
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
-                            m_allStoppedCondition.notify_one();
+                            m_all_stopped_condition.notify_one();
                             //--------------------------
                             return;
                             //--------------------------
@@ -789,7 +822,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void worker_function(void)
             //--------------------------
-            void adjust_workers(void){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), void> adjust_workers(void){
                 //--------------------------
                 static const size_t threshold_ = static_cast<size_t>(std::ceil(m_upper_threshold*0.2));
                 //--------------------------
@@ -799,16 +833,16 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    if (worker_count > task_count and !m_idle_threads.empty() and worker_count > threshold_) {
+                    if (worker_count > task_count and !m_idle_threads->empty() and worker_count > threshold_) {
                         //--------------------------
-                        size_t thread_id_ = *m_idle_threads.begin();
+                        size_t thread_id_ = *m_idle_threads->begin();
                         //--------------------------
                         m_workers.at(thread_id_).request_stop();
-                        m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
+                        m_task_available_condition.notify_all(); // Notify all threads to check for stop request
                         //--------------------------
                         if (m_workers.at(thread_id_).get_stop_token().stop_requested()) {
                             //--------------------------
-                            m_idle_threads.erase(thread_id_);
+                            m_idle_threads->erase(thread_id_);
                             //--------------------------
                             lock.unlock(); // Release the lock before joining the thread
                             //--------------------------
@@ -827,11 +861,15 @@ namespace ThreadPool{
                     //--------------------------
                 }
                 //--------------------------
-                m_allStoppedCondition.notify_one();
+                m_all_stopped_condition.notify_one();
                 //--------------------------
             }// end void adjust_workers(void)
             //--------------------------
-            void adjustment_thread_function(const std::stop_token& stoken){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<!U, void> adjust_workers(void) = delete;
+            //--------------------------
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -843,24 +881,35 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<!U, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
+            //--------------------------
             void stop(void){
                 //--------------------------
                 {
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
+                    m_all_stopped_condition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    m_adjustmentThread.request_stop();
+                    if constexpr (adoptive_tick > 0UL) {
+                        m_adoptive_thread->request_stop();
+                    } // end if constexpr (adoptive_tick > 0UL)
                     //--------------------------
                     if(!m_workers.empty()){ 
-                        for (auto &[id, worker] : m_workers) {
-                            worker.request_stop(); // request each worker to stop
-                        }// end for (auto &worker : m_workers)
-                    }
+                        if constexpr (adoptive_tick > 0UL) {
+                            for (auto &[id, worker] : m_workers) {
+                                worker.request_stop(); // request each worker to stop
+                            }// end for (auto &worker : m_workers)
+                        } else {
+                            for (auto &worker : m_workers) {
+                                worker.request_stop(); // request each worker to stop
+                            }// end for (auto &worker : m_workers)
+                        }// end if constexpr (adoptive_tick > 0UL)
+                    }// end if(!m_workers.empty())
                 }
                 //--------------------------
-                m_taskAvailableCondition.notify_all();
+                m_task_available_condition.notify_all();
                 //--------------------------
             }//end void stop(void)
             //--------------------------
@@ -869,7 +918,7 @@ namespace ThreadPool{
                 //--------------------------
                 m_tasks.push(std::move(task));
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end void push_task(ThreadTask&& task)
             //--------------------------
@@ -878,7 +927,7 @@ namespace ThreadPool{
                 //--------------------------
                 m_tasks.emplace(std::forward<Args>(args)...);
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end void emplace_task(Args&&... args)
             //--------------------------
@@ -926,38 +975,50 @@ namespace ThreadPool{
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------
-            std::optional<size_t> safe_increment(const size_t& value) {
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), std::optional<size_t>> safe_increment(const size_t& value) {
                 //--------------------------
                 if (value == std::numeric_limits<size_t>::max()) {
                     std::cerr << "Maximum Thread IDs have been reached" << std::endl;
                     return std::nullopt;
                 }// end if (value == std::numeric_limits<size_t>::max())
                 //--------------------------
-                return value + 1;
+                return value + 1UL;
                 //--------------------------
             }// end std::optional<size_t> safe_increment(const size_t& value)
+            //--------------------------
+            constexpr std::optional<std::jthread> assign_adoptive_thread(void){
+                //--------------------------
+                if constexpr (adoptive_tick > 0UL){
+                    return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
+                }// end if constexpr (adoptive_tick > 0UL)
+                //--------------------------
+                return std::nullopt;
+                //--------------------------
+            }// end constexpr std::optional<std::jthread> assign_adoptive_thread(void)
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            std::unordered_map<size_t, std::jthread> m_workers;
+            using WorkersType = std::conditional_t<(adoptive_tick > 0UL), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
+            WorkersType m_workers;
             //--------------------------
-            std::unordered_set<size_t> m_idle_threads;
+            std::optional<std::unordered_set<size_t>> m_idle_threads;
             //--------------------------
             using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
             //--------------------------
-            std::jthread m_adjustmentThread;
+            std::optional<std::jthread> m_adoptive_thread;
             //--------------------------
             mutable std::mutex m_mutex;
             //--------------------------
-            std::condition_variable m_taskAvailableCondition, m_allStoppedCondition;
+            std::condition_variable m_task_available_condition, m_all_stopped_condition;
             //--------------------------
             // Definitions
             //--------------------------
-            static constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(1); 
-            static constexpr size_t m_lowerThreshold = 1UL;
+            static constexpr auto CHECK_INTERVAL = std::chrono::nanoseconds(static_cast<int64_t>(adoptive_tick)); 
+            static constexpr size_t m_lower_threshold = 1UL;
         //--------------------------------------------------------------
     };// end class ThreadPool
     //--------------------------------------------------------------
