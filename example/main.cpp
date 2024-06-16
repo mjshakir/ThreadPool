@@ -72,13 +72,14 @@ int main(void)
         }
 
         for(auto& result : results){
-            std::cout << "Return Value:[" << result.get() << "]" << std::endl;
+            std::cout << "ThreadMode::STANDARD Future Return Value:[" << result.get() << "] \n";
         }
+        std::cout << std::endl;
     }
     {
         ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
         for (size_t i = 0; i < _size; ++i) {
-            _threads.queue([](int value) { std::cout << "Print Value:[" << value << "]" << std::endl; }, i);
+            _threads.queue([](int value) { std::cout << "ThreadMode::STANDARD Print Value:[" << value << "]" << std::endl; }, i);
         }
     }
     {
@@ -90,8 +91,9 @@ int main(void)
         }
 
         for(auto& result : results){
-            std::cout << "Return Value:[" << result.get() << "]" << std::endl;
+            std::cout << "ThreadPool::ThreadMode::PRIORITY Future Return Value:[" << result.get() << "]\n";
         }
+        std::cout << std::endl;
     }
     {
         ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
