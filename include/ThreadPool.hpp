@@ -858,10 +858,10 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjust_workers(void)
             //--------------------------
-            template <AdoptiveControl U = adoptive_tick>
+            template <size_t U = adoptive_tick>
             std::enable_if_t<!U, void> adjust_workers(void) = delete;
             //--------------------------
-            template <AdoptiveControl U = adoptive_tick>
+            template <size_t U = adoptive_tick>
             std::enable_if_t<U > 0UL, void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
@@ -874,7 +874,7 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
-            template <AdoptiveControl U = adoptive_tick>
+            template <size_t U = adoptive_tick>
             std::enable_if_t<!U, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
             //--------------------------
             void stop(void){
@@ -994,7 +994,7 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            using WorkersType = std::conditional_t<adoptive_tick > 0UL, std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
+            using WorkersType = std::conditional_t<(adoptive_tick > 0UL), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
             WorkersType m_workers;
             //--------------------------
             std::optional<std::unordered_set<size_t>> m_idle_threads;
