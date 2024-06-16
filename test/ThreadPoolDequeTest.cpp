@@ -8,7 +8,7 @@ class ThreadPoolTest : public ::testing::Test {
 protected:
     void SetUp() override {
         // Setup necessary resources before each test
-        threadPool = std::make_unique<ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD, ThreadPool::AdoptiveControl::ENABLED>>(10); // Assume 4 as default thread count
+        threadPool = std::make_unique<ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD>>(10); // Assume 4 as default thread count
     }
     
     void TearDown() override {
