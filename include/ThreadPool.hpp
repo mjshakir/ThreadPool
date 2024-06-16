@@ -51,9 +51,15 @@ namespace ThreadPool{
     /**
      * @class ThreadPool
      * @brief A thread pool implementation that manages worker threads.
-     *
      * The ThreadPool class handles the creation, management, and destruction of threads. 
      * It also provides functionality to queue tasks for execution by the worker threads.
+     *
+     * @tparam use_priority_queue A boolean value indicating whether the ThreadPool should use priority queues or deque
+     * for task management. If set to true, the ThreadPool will use priority queues to manage tasks based on their priority.
+     * If set to false, the ThreadPool will use a deque to manage tasks in a first-come, first-served manner.
+     * @tparam adoptive_tick The time interval (in nanoseconds) after which idle threads should be destroyed in the ThreadPool.
+     * If set to 0, the ThreadPool will not destroy idle threads. This parameter is optional and defaults to 1,000,000 nanoseconds (1 millisecond).
+     *
      */
     template <ThreadMode use_priority_queue = ThreadMode::STANDARD, size_t adoptive_tick = 1000000UL>
     class ThreadPool {
@@ -427,7 +433,8 @@ namespace ThreadPool{
              * @details The constructor initializes a ThreadPool with a specified number of worker threads.
              * The actual number of worker threads will be clamped between the system's lower
              * threshold and either the upper threshold or the number of hardware threads available,
-             * whichever is smaller.
+             * whichever is smaller. The ThreadPool will manage these worker threads and execute tasks 
+             * that are queued to it.
              *
              * Internally, the ThreadPool will keep track of tasks that have failed, been retried, 
              * or completed successfully.
