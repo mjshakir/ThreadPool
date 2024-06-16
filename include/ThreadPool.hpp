@@ -48,11 +48,6 @@ namespace ThreadPool{
         PRIORITY = true
     }; // end enum class ThreadMode
     //--------------------------------------------------------------
-    enum class AdoptiveControl : bool {
-        DISABLED = false,
-        ENABLED  = true
-    }; // end enum class AdoptiveControl
-    //--------------------------------------------------------------
     /**
      * @class ThreadPool
      * @brief A thread pool implementation that manages worker threads.
@@ -60,7 +55,7 @@ namespace ThreadPool{
      * The ThreadPool class handles the creation, management, and destruction of threads. 
      * It also provides functionality to queue tasks for execution by the worker threads.
      */
-    template <ThreadMode use_priority_queue = ThreadMode::STANDARD, AdoptiveControl use_adoptive_control = AdoptiveControl::ENABLED>
+    template <ThreadMode use_priority_queue = ThreadMode::STANDARD, size_t adoptive_tick = 1000000UL>
     class ThreadPool {
         //-------------------------------------------------------------
         protected:
@@ -463,14 +458,16 @@ namespace ThreadPool{
              */
             explicit ThreadPool(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency()))
                             :   m_upper_threshold((static_cast<size_t>(std::thread::hardware_concurrency()) > 1) ? 
-                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lowerThreshold),
-                                m_adjustmentThread(assign_adoptive_thread()){
+                                    static_cast<size_t>(std::thread::hardware_concurrency()) : m_lower_threshold),
+                                m_adoptive_thread(assign_adoptive_thread()){
                 //--------------------------
-                auto _threads_number = std::clamp( number_threads, m_lowerThreshold, m_upper_threshold);
-                if constexpr (static_cast<bool>(use_adoptive_control)){
+                auto _threads_number = std::clamp(number_threads, m_lower_threshold, m_upper_threshold);
+                //--------------------------
+                if constexpr (adoptive_tick > 0UL){
                     m_idle_threads.emplace();
                     m_idle_threads->reserve(_threads_number);
-                }//end if constexpr (static_cast<bool>(use_adoptive_control
+                }//end if constexpr (adoptive_tick > 0UL)
+                //--------------------------
                 create_task(_threads_number);
                 //--------------------------
                 if constexpr (static_cast<bool>(use_priority_queue)){
@@ -681,7 +678,7 @@ namespace ThreadPool{
                     m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
                 }// end adding task
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
                 return future;
                 //--------------------------
@@ -704,12 +701,12 @@ namespace ThreadPool{
                     m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
                 }// end adding task
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::ENABLED, void> create_task(const size_t& number_threads){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), void> create_task(const size_t& number_threads){
                 //--------------------------
                 static thread_local size_t id = 0UL;
                 //--------------------------
@@ -733,8 +730,8 @@ namespace ThreadPool{
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::DISABLED, void> create_task(const size_t& number_threads){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<!U , void> create_task(const size_t& number_threads){
                 //--------------------------
                 m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
@@ -759,19 +756,19 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        if constexpr (static_cast<bool>(use_adoptive_control)){
+                        if constexpr (adoptive_tick > 0UL){
                             m_idle_threads->insert(id.value());
-                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                        }// end if constexpr (adoptive_tick > 0UL)
                         //--------------------------
-                        m_taskAvailableCondition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
+                        m_task_available_condition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        if constexpr (static_cast<bool>(use_adoptive_control)){
+                        if constexpr (adoptive_tick > 0UL){
                             m_idle_threads->erase(id.value());
-                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                        }// end if constexpr (adoptive_tick > 0UL)
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
-                            m_allStoppedCondition.notify_one();
+                            m_all_stopped_condition.notify_one();
                             //--------------------------
                             return;
                             //--------------------------
@@ -818,8 +815,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void worker_function(void)
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::ENABLED, void> adjust_workers(void){
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<(U > 0UL), void> adjust_workers(void){
                 //--------------------------
                 static const size_t threshold_ = static_cast<size_t>(std::ceil(m_upper_threshold*0.2));
                 //--------------------------
@@ -834,7 +831,7 @@ namespace ThreadPool{
                         size_t thread_id_ = *m_idle_threads->begin();
                         //--------------------------
                         m_workers.at(thread_id_).request_stop();
-                        m_taskAvailableCondition.notify_all(); // Notify all threads to check for stop request
+                        m_task_available_condition.notify_all(); // Notify all threads to check for stop request
                         //--------------------------
                         if (m_workers.at(thread_id_).get_stop_token().stop_requested()) {
                             //--------------------------
@@ -857,15 +854,15 @@ namespace ThreadPool{
                     //--------------------------
                 }
                 //--------------------------
-                m_allStoppedCondition.notify_one();
+                m_all_stopped_condition.notify_one();
                 //--------------------------
             }// end void adjust_workers(void)
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::DISABLED, void> adjust_workers(void) = delete;
+            template <AdoptiveControl U = adoptive_tick>
+            std::enable_if_t<!U, void> adjust_workers(void) = delete;
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::ENABLED, void> adjustment_thread_function(const std::stop_token& stoken){
+            template <AdoptiveControl U = adoptive_tick>
+            std::enable_if_t<U > 0UL, void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -877,8 +874,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::DISABLED, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
+            template <AdoptiveControl U = adoptive_tick>
+            std::enable_if_t<!U, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
             //--------------------------
             void stop(void){
                 //--------------------------
@@ -886,14 +883,14 @@ namespace ThreadPool{
                     //--------------------------
                     std::unique_lock lock(m_mutex);
                     //--------------------------
-                    m_allStoppedCondition.wait(lock, [this] { return m_tasks.empty(); }); 
+                    m_all_stopped_condition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    if constexpr (static_cast<bool>(use_adoptive_control)) {
-                        m_adjustmentThread->request_stop();
-                    } // end if constexpr (static_cast<bool>(use_adoptive_control))
+                    if constexpr (adoptive_tick > 0UL) {
+                        m_adoptive_thread->request_stop();
+                    } // end if constexpr (adoptive_tick > 0UL)
                     //--------------------------
                     if(!m_workers.empty()){ 
-                        if constexpr (static_cast<bool>(use_adoptive_control)) {
+                        if constexpr (adoptive_tick > 0UL) {
                             for (auto &[id, worker] : m_workers) {
                                 worker.request_stop(); // request each worker to stop
                             }// end for (auto &worker : m_workers)
@@ -901,11 +898,11 @@ namespace ThreadPool{
                             for (auto &worker : m_workers) {
                                 worker.request_stop(); // request each worker to stop
                             }// end for (auto &worker : m_workers)
-                        }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                        }// end if constexpr (adoptive_tick > 0UL)
                     }// end if(!m_workers.empty())
                 }
                 //--------------------------
-                m_taskAvailableCondition.notify_all();
+                m_task_available_condition.notify_all();
                 //--------------------------
             }//end void stop(void)
             //--------------------------
@@ -914,7 +911,7 @@ namespace ThreadPool{
                 //--------------------------
                 m_tasks.push(std::move(task));
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end void push_task(ThreadTask&& task)
             //--------------------------
@@ -923,7 +920,7 @@ namespace ThreadPool{
                 //--------------------------
                 m_tasks.emplace(std::forward<Args>(args)...);
                 //--------------------------
-                m_taskAvailableCondition.notify_one();
+                m_task_available_condition.notify_one();
                 //--------------------------
             }// end void emplace_task(Args&&... args)
             //--------------------------
@@ -971,8 +968,8 @@ namespace ThreadPool{
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------
-            template <AdoptiveControl U = use_adoptive_control>
-            std::enable_if_t<U == AdoptiveControl::ENABLED, std::optional<size_t>> safe_increment(const size_t& value) {
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<U > 0UL, std::optional<size_t>> safe_increment(const size_t& value) {
                 //--------------------------
                 if (value == std::numeric_limits<size_t>::max()) {
                     std::cerr << "Maximum Thread IDs have been reached" << std::endl;
@@ -985,9 +982,9 @@ namespace ThreadPool{
             //--------------------------
             constexpr std::optional<std::jthread> assign_adoptive_thread(void){
                 //--------------------------
-                if constexpr (static_cast<bool>(use_adoptive_control)){
+                if constexpr (adoptive_tick > 0UL){
                     return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
-                }// end if constexpr (static_cast<bool>(use_adoptive_control))
+                }// end if constexpr (adoptive_tick > 0UL)
                 //--------------------------
                 return std::nullopt;
                 //--------------------------
@@ -997,7 +994,7 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            using WorkersType = std::conditional_t<static_cast<bool>(use_adoptive_control), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
+            using WorkersType = std::conditional_t<adoptive_tick > 0UL, std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
             WorkersType m_workers;
             //--------------------------
             std::optional<std::unordered_set<size_t>> m_idle_threads;
@@ -1005,16 +1002,16 @@ namespace ThreadPool{
             using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
             //--------------------------
-            std::optional<std::jthread> m_adjustmentThread;
+            std::optional<std::jthread> m_adoptive_thread;
             //--------------------------
             mutable std::mutex m_mutex;
             //--------------------------
-            std::condition_variable m_taskAvailableCondition, m_allStoppedCondition;
+            std::condition_variable m_task_available_condition, m_all_stopped_condition;
             //--------------------------
             // Definitions
             //--------------------------
-            static constexpr auto CHECK_INTERVAL = std::chrono::milliseconds(1); 
-            static constexpr size_t m_lowerThreshold = 1UL;
+            static constexpr auto CHECK_INTERVAL = std::chrono::nanoseconds(static_cast<int64_t>(adoptive_tick)); 
+            static constexpr size_t m_lower_threshold = 1UL;
         //--------------------------------------------------------------
     };// end class ThreadPool
     //--------------------------------------------------------------
