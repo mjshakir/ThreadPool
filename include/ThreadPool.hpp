@@ -134,8 +134,8 @@ namespace ThreadPool{
                      */
                     TaskBuilder(ThreadPool& threadPool, bool auto_submit, F&& f, Args&&... args)
                         :   m_threadPool(threadPool),
-                            m_priority(0),
-                            m_retries(0),
+                            m_priority(0U),
+                            m_retries(0U),
                             m_submitted(false),
                             m_task(create_task(std::forward<F>(f), std::forward<Args>(args)...)) {
                         //--------------------------
@@ -194,10 +194,10 @@ namespace ThreadPool{
                      *     .set_priority(10);  // Set a priority of 10.
                      * ```
                      */
-                    inline TaskBuilder& set_priority(const uint8_t& priority) {
+                    inline TaskBuilder& set_priority(const uint16_t& priority) {
                         m_priority = priority;
                         return *this;
-                    }// end TaskBuilder& set_priority(const uint8_t& p)
+                    }// end TaskBuilder& set_priority(const uint16_t& p)
                     //--------------------------
                     /**
                      * @brief Sets the retry count for the task encapsulated by this TaskBuilder instance.
@@ -416,7 +416,8 @@ namespace ThreadPool{
                 private:
                     //--------------------------------------------------------------
                     ThreadPool& m_threadPool;
-                    uint8_t m_priority, m_retries;
+                    uint16_t m_priority;
+                    uint8_t m_retries;
                     bool m_submitted;
                     std::packaged_task<std::conditional_t<std::is_void_v<ReturnType>, VoidType, ReturnType>()> m_task;
                     std::optional<std::future<ReturnType>> m_future;

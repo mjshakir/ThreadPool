@@ -70,13 +70,13 @@ namespace ThreadPool {
              * @endcode
              */
             template <typename Func, typename... Args>
-            ThreadTask(Func&& func, Args&&... args, uint8_t priority = 0U, uint8_t retries = 0U)
+            ThreadTask(Func&& func, Args&&... args, uint16_t priority = 0U, uint8_t retries = 0U)
                             :   m_function(init_function(std::forward<Func>(func), std::forward<Args>(args)...)),
                                 m_priority(priority),
                                 m_retries(retries),
                                 m_state(TaskState::PENDING){
                 //--------------------------
-            }// end ThreadTask(Func&& func, Args&&... args, uint8_t priority = 0u, uint8_t retries = 0u)
+            }// end ThreadTask(Func&& func, Args&&... args, uint16_t priority = 0u, uint8_t retries = 0u)
             //--------------------------
             ThreadTask(const ThreadTask&)            = delete;
             ThreadTask& operator=(const ThreadTask&) = delete;
@@ -216,7 +216,7 @@ namespace ThreadPool {
              * std::cout << "Task priority: " << static_cast<int>(task.get_priority_local()) << std::endl;
              * // prints "Task priority: 5"
              */
-            uint8_t get_priority(void) const;
+            uint16_t get_priority(void) const;
             //--------------------------
             /**
              * @brief Increases the retry count for the task by a specified amount.
@@ -297,7 +297,7 @@ namespace ThreadPool {
              *   });
              * task.increase_priority(3);  // Increase priority by 3
              */
-            void increase_priority(const uint8_t& amount);
+            void increase_priority(const uint16_t& amount);
             //--------------------------
             /**
              * @brief Decreases the priority of the task by a specified amount in a thread-safe manner.
@@ -314,7 +314,7 @@ namespace ThreadPool {
              * });
              * task.decrease_priority(2);  // Decrease priority by 2
              */
-            void decrease_priority(const uint8_t& amount);
+            void decrease_priority(const uint16_t& amount);
             //--------------------------
             /**
              * @brief Increases the priority of the task by 1 in a thread-safe manner.
@@ -425,15 +425,15 @@ namespace ThreadPool {
             //--------------------------
             uint8_t get_retries_local(void) const;
             //--------------------------
-            uint8_t get_priority_local(void) const;
+            uint16_t get_priority_local(void) const;
             //--------------------------
             void increase_retries_local(const uint8_t& amount);
             //--------------------------
             void decrease_retries_local(const uint8_t& amount);
             //--------------------------
-            void increase_priority_local(const uint8_t& amount);
+            void increase_priority_local(const uint16_t& amount);
             //--------------------------
-            void decrease_priority_local(const uint8_t& amount);
+            void decrease_priority_local(const uint16_t& amount);
             //--------------------------
             struct ComparatorLess {
                 //--------------------------------------------------------------
@@ -470,12 +470,11 @@ namespace ThreadPool {
         private:
             //--------------------------------------------------------------
             std::function<std::any()> m_function;
-            uint8_t m_priority, m_retries;
+            uint16_t m_priority;
+            uint8_t m_retries;
             //--------------------------
             enum class TaskState : uint8_t {
-                PENDING = 0,
-                COMPLETED,
-                RETRIEVED
+                PENDING = 0, COMPLETED, RETRIEVED
             };
             //--------------------------
             TaskState m_state;

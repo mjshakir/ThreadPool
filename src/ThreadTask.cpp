@@ -81,7 +81,7 @@ uint8_t ThreadPool::ThreadTask::get_retries(void) const {
     //--------------------------
 }// end uint8_t ThreadPool::ThreadTask::get_retries(void) const
 //--------------------------
-uint8_t ThreadPool::ThreadTask::get_priority(void) const {
+uint16_t ThreadPool::ThreadTask::get_priority(void) const {
     //--------------------------
     return get_priority_local();
     //--------------------------
@@ -111,13 +111,13 @@ void ThreadPool::ThreadTask::decrease_retries(void) {
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_retries(void)
 //--------------------------------------------------------------
-void ThreadPool::ThreadTask::increase_priority(const uint8_t& amount){
+void ThreadPool::ThreadTask::increase_priority(const uint16_t& amount){
     //--------------------------
     increase_priority_local(amount);
     //--------------------------
 }// end void ThreadPool::ThreadTask::increase_priority(const uint8_t& amount)
 //--------------------------------------------------------------
-void ThreadPool::ThreadTask::decrease_priority(const uint8_t& amount){
+void ThreadPool::ThreadTask::decrease_priority(const uint16_t& amount){
     //--------------------------
     decrease_priority_local(amount);
     //--------------------------
@@ -125,11 +125,11 @@ void ThreadPool::ThreadTask::decrease_priority(const uint8_t& amount){
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::increase_priority(void) {
     increase_priority_local(1);
-}
+} // end void ThreadPool::ThreadTask::increase_priority(void)
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::decrease_priority(void) {
     decrease_priority_local(1);
-}
+} // end void ThreadPool::ThreadTask::decrease_priority(void)
 //--------------------------------------------------------------
 uint8_t ThreadPool::ThreadTask::get_status(void) const {
     //--------------------------
@@ -200,7 +200,7 @@ uint8_t ThreadPool::ThreadTask::get_retries_local(void) const {
     //--------------------------
 }// end uint8_t ThreadPool::ThreadTask::get_retries_local(void) const
 //--------------------------------------------------------------
-uint8_t ThreadPool::ThreadTask::get_priority_local(void) const {
+uint16_t ThreadPool::ThreadTask::get_priority_local(void) const {
      //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_priority;
@@ -227,23 +227,23 @@ void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) {
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) const
 //--------------------------------------------------------------
-void ThreadPool::ThreadTask::increase_priority_local(const uint8_t& amount) {
+void ThreadPool::ThreadTask::increase_priority_local(const uint16_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
     uint16_t _results = m_priority + amount;
     //--------------------------
-    m_priority = (_results > std::numeric_limits<uint8_t>::max()) ? std::numeric_limits<uint8_t>::max() : _results;
+    m_priority = (_results > std::numeric_limits<uint16_t>::max()) ? std::numeric_limits<uint16_t>::max() : _results;
     //--------------------------
-}// end void ThreadPool::ThreadTask::increase_priority_local(const uint8_t& amount) const
+}// end void ThreadPool::ThreadTask::increase_priority_local(const uint16_t& amount) const
 //--------------------------------------------------------------
-void ThreadPool::ThreadTask::decrease_priority_local(const uint8_t& amount) {
+void ThreadPool::ThreadTask::decrease_priority_local(const uint16_t& amount) {
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    uint8_t _results = m_priority - amount;
+    uint16_t _results = m_priority - amount;
     //--------------------------
-    m_priority = std::clamp(_results, std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
+    m_priority = std::clamp(_results, std::numeric_limits<uint16_t>::min(), std::numeric_limits<uint16_t>::max());
     //--------------------------
-}// end void ThreadPool::ThreadTask::decrease_priority_local(const uint8_t& amount) const
+}// end void ThreadPool::ThreadTask::decrease_priority_local(const uint16_t& amount) const
 //--------------------------------------------------------------
