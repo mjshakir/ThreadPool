@@ -9,7 +9,7 @@ endif()
 # Get the name of the folder and use it as the project name
 get_filename_component(PARENT_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 string(REPLACE " " "_" PARENT_DIR_NAME ${PARENT_DIR_NAME})
-project(${PARENT_DIR_NAME} VERSION 1.0 DESCRIPTION "A timing function library" LANGUAGES CXX)
+project(${PARENT_DIR_NAME} VERSION 1.0 DESCRIPTION "A Threadpool function library" LANGUAGES CXX)
 #------------------------------------------------------------------------------------------
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -18,14 +18,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Print out the build type
 message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 #------------------------------------------------------------------------------------------
-if(MSVC)
-    # MSVC specific warning flags
-    add_library(common_options INTERFACE)
-    target_compile_options(common_options INTERFACE /W4)  # Equivalent to -Wall in GCC/Clang
-else()
-    # GCC/Clang specific warning flags
-    add_library(common_options INTERFACE)
-    target_compile_options(common_options INTERFACE -Wall -Wextra -Wpedantic -pedantic-errors -Werror=format-security -fasynchronous-unwind-tables)
+if(THREADPOOL_STANDALONE_PROJECT)
+    if(MSVC)
+        # MSVC specific warning flags
+        add_library(common_options INTERFACE)
+        target_compile_options(common_options INTERFACE /W4)  # Equivalent to -Wall in GCC/Clang
+    else()
+        # GCC/Clang specific warning flags
+        add_library(common_options INTERFACE)
+        target_compile_options(common_options INTERFACE -Wall -Wextra -Wpedantic -pedantic-errors -Werror=format-security -fasynchronous-unwind-tables)
+    endif()
 endif()
 #------------------------------------------------------------------------------------------
 # Set the runtime output directory only if this is a standalone project
