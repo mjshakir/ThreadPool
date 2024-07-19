@@ -94,13 +94,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 #------------------------------------------------------------------------------------------
 # Alias for ThreadPool library
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+add_library(ThreadPool::threadpool ALIAS ${PROJECT_NAME})
 #------------------------------------------------------------------------------------------
 # Set THREADPOOL_LIBRARIES variable
 if(THREADPOOL_STANDALONE_PROJECT)
-    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::threadpool)
+    set(THREADPOOL_LIBRARIES ThreadPool::threadpool)
 else()
-    set(THREADPOOL_LIBRARIES ${PROJECT_NAME}::threadpool PARENT_SCOPE)
+    set(THREADPOOL_LIBRARIES ThreadPool::threadpool PARENT_SCOPE)
 endif()
 message(STATUS "THREADPOOL_LIBRARIES: ${THREADPOOL_LIBRARIES}")
 #------------------------------------------------------------------------------------------
