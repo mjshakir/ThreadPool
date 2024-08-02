@@ -9,8 +9,8 @@
 //--------------------------------------------------------------
 // public
 //--------------------------
-ThreadPool::ThreadTask::ThreadTask(ThreadTask&& other) noexcept :   m_priority(other.m_priority),
-                                                                    m_retries(other.m_retries),
+ThreadPool::ThreadTask::ThreadTask(ThreadTask&& other) noexcept :   m_priority(other.m_priority.load()),
+                                                                    m_retries(other.m_retries.load()),
                                                                     m_state(other.m_state) {
           
     {
@@ -27,8 +27,8 @@ ThreadPool::ThreadTask& ThreadPool::ThreadTask::operator=(ThreadTask&& other) no
         std::scoped_lock lock(m_mutex, other.m_mutex); // Lock both mutexes
         //--------------------------
         m_function  = std::move(other.m_function);
-        m_priority  = other.m_priority;
-        m_retries   = other.m_retries;
+        m_priority  = other.m_priority.load();
+        m_retries   = other.m_retries.load();
         m_state     = other.m_state;
         m_promise   = std::move(other.m_promise);
         //--------------------------
@@ -40,13 +40,11 @@ ThreadPool::ThreadTask& ThreadPool::ThreadTask::operator=(ThreadTask&& other) no
 //--------------------------------------------------------------
 std::strong_ordering ThreadPool::ThreadTask::operator<=>(const ThreadTask& other) const {
     //--------------------------
-    std::scoped_lock lock(m_mutex, other.m_mutex); // Lock both mutexes
-    //--------------------------
-    if (auto cmp = m_priority <=> other.m_priority; cmp != 0) {
+    if (auto cmp = m_priority.load() <=> other.m_priority.load(); cmp != 0) {
         return cmp;
     } // end if (auto cmp = m_priority <=> other.m_priority; cmp != 0)
     //--------------------------
-    return m_retries <=> other.m_retries;
+    return m_retries.load() <=> other.m_retries.load();
     //--------------------------
 } // end std::strong_ordering ThreadPool::ThreadTask::operator<=>(const ThreadTask& other) const
 //--------------------------------------------------------------
@@ -172,7 +170,7 @@ bool ThreadPool::ThreadTask::try_execute_local(void){
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    m_state = ThreadPool::ThreadTask::TaskState::COMPLETED;
+    m_state = ThreadTask::TaskState::COMPLETED;
     //--------------------------
     return true;
     //--------------------------
@@ -182,67 +180,65 @@ bool ThreadPool::ThreadTask::is_done(void) const{
     //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
     //--------------------------
-    if (ThreadPool::ThreadTask::is_void_function<decltype(m_function)>() and (m_state == ThreadPool::ThreadTask::TaskState::COMPLETED)) {
+    if (ThreadTask::is_void_function<decltype(m_function)>() and (m_state == ThreadPool::ThreadTask::TaskState::COMPLETED)) {
         //--------------------------
         return true;
         //--------------------------
     }// end if (m_state == ThreadPool::ThreadTask::TaskState::COMPLETED)
     //--------------------------
-    return m_state == ThreadPool::ThreadTask::TaskState::RETRIEVED;
+    return m_state == ThreadTask::TaskState::RETRIEVED;
     //--------------------------
 }// end bool ThreadPool::ThreadTask::is_done(void) const
 //--------------------------------------------------------------
 uint8_t ThreadPool::ThreadTask::get_retries_local(void) const {
      //--------------------------
     std::lock_guard<std::mutex> lock(m_mutex);
-    return m_retries;
+    return m_retries.load();
     //--------------------------
 }// end uint8_t ThreadPool::ThreadTask::get_retries_local(void) const
 //--------------------------------------------------------------
 uint16_t ThreadPool::ThreadTask::get_priority_local(void) const {
      //--------------------------
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return m_priority;
+    return m_priority.load();
     //--------------------------
 }// end uint8_t ThreadPool::ThreadTask::get_priority_local(void) const
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::increase_retries_local(const uint8_t& amount) {
     //--------------------------
-    std::lock_guard<std::mutex> lock(m_mutex);
+    uint8_t expected = m_retries.load(), desired = 0U;
     //--------------------------
-    uint16_t _results = m_retries + amount;
-    //--------------------------
-    m_retries = (_results > std::numeric_limits<uint8_t>::max()) ? std::numeric_limits<uint8_t>::max() : _results;
+    do {
+        desired = std::clamp<uint8_t>(expected + amount, 0, std::numeric_limits<uint8_t>::max());
+    } while (!m_retries.compare_exchange_weak(expected, desired));
     //--------------------------
 }// end void ThreadPool::ThreadTask::increase_retries_local(const uint8_t& amount) const
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) {
     //--------------------------
-    std::lock_guard<std::mutex> lock(m_mutex);
-    //--------------------------
-    uint8_t _results = m_retries - amount;
-    //--------------------------
-    m_retries = std::clamp(_results, std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
+    uint8_t expected = m_retries.load(), desired = 0U;
+    do {
+        desired = std::clamp<uint8_t>(expected - amount, 0, std::numeric_limits<uint8_t>::max());
+    } while (!m_retries.compare_exchange_weak(expected, desired));
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_retries_local(const uint8_t& amount) const
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::increase_priority_local(const uint16_t& amount) {
     //--------------------------
-    std::lock_guard<std::mutex> lock(m_mutex);
+    uint16_t expected = m_priority.load(), desired = 0U;
     //--------------------------
-    uint16_t _results = m_priority + amount;
-    //--------------------------
-    m_priority = (_results > std::numeric_limits<uint16_t>::max()) ? std::numeric_limits<uint16_t>::max() : _results;
+    do {
+        desired = std::clamp<uint16_t>(expected + amount, 0, std::numeric_limits<uint16_t>::max());
+    } while (!m_priority.compare_exchange_weak(expected, desired));
     //--------------------------
 }// end void ThreadPool::ThreadTask::increase_priority_local(const uint16_t& amount) const
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::decrease_priority_local(const uint16_t& amount) {
     //--------------------------
-    std::lock_guard<std::mutex> lock(m_mutex);
+    uint16_t expected = m_priority.load(), desired = 0U;
     //--------------------------
-    uint16_t _results = m_priority - amount;
-    //--------------------------
-    m_priority = std::clamp(_results, std::numeric_limits<uint16_t>::min(), std::numeric_limits<uint16_t>::max());
+    do {
+        desired = std::clamp<uint16_t>(expected - amount, 0, std::numeric_limits<uint16_t>::max());
+    } while (!m_priority.compare_exchange_weak(expected, desired));
     //--------------------------
 }// end void ThreadPool::ThreadTask::decrease_priority_local(const uint16_t& amount) const
 //--------------------------------------------------------------

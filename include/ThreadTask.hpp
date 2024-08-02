@@ -5,6 +5,7 @@
 #include <iostream>
 #include <functional>
 #include <mutex>
+#include <atomic>
 #include <any>
 #include <future>
 #include <compare>
@@ -435,12 +436,12 @@ namespace ThreadPool {
         private:
             //--------------------------------------------------------------
             std::function<std::any()> m_function;
-            uint16_t m_priority;
-            uint8_t m_retries;
+            std::atomic<uint16_t> m_priority;
+            std::atomic<uint8_t> m_retries;
             //--------------------------
             enum class TaskState : uint8_t {
-                PENDING = 0, COMPLETED, RETRIEVED
-            };
+                PENDING = 0U, COMPLETED, RETRIEVED
+            }; // end enum class TaskState
             //--------------------------
             TaskState m_state;
             //--------------------------
