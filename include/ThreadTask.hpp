@@ -7,6 +7,7 @@
 #include <mutex>
 #include <any>
 #include <future>
+#include <compare>
 //--------------------------------------------------------------
 /**
  * @namespace ThreadPool
@@ -85,11 +86,7 @@ namespace ThreadPool {
             //--------------------------
             ThreadTask& operator=(ThreadTask&& other) noexcept;
             //--------------------------------------------------------------
-            bool operator==(const ThreadTask& other) const;
-            //--------------------------
-            bool operator<(const ThreadTask& other) const;
-            //--------------------------
-            bool operator>(const ThreadTask& other) const;
+            std::strong_ordering operator<=>(const ThreadTask& other) const;
             //--------------------------
             /**
              * @brief Executes the task until it's successful or retries run out.
@@ -434,38 +431,6 @@ namespace ThreadPool {
             void increase_priority_local(const uint16_t& amount);
             //--------------------------
             void decrease_priority_local(const uint16_t& amount);
-            //--------------------------
-            struct ComparatorLess {
-                //--------------------------------------------------------------
-                bool operator()(const ThreadTask& lhs, const ThreadTask& rhs) const {
-                    //--------------------------
-                    std::scoped_lock lock(lhs.m_mutex, rhs.m_mutex);
-                    //--------------------------
-                    if (lhs.m_priority != rhs.m_priority) {
-                        return lhs.m_priority < rhs.m_priority;
-                    }// end if (lhs.m_priority != rhs.m_priority)
-                    //--------------------------
-                    return lhs.m_retries < rhs.m_retries;
-                    //--------------------------
-                }// end bool operator()(const ThreadTask& lhs, const ThreadTask& rhs) const
-                //--------------------------------------------------------------
-            };// end struct ComparatorLess
-            //--------------------------
-            struct ComparatorMore{
-                //--------------------------------------------------------------
-                bool operator()(const ThreadTask& lhs, const ThreadTask& rhs) const {
-                    //--------------------------
-                    std::scoped_lock lock(lhs.m_mutex, rhs.m_mutex);
-                    //--------------------------
-                    if (lhs.m_priority != rhs.m_priority) {
-                        return lhs.m_priority > rhs.m_priority;
-                    }// end if (lhs.m_priority != rhs.m_priority)
-                    //--------------------------
-                    return lhs.m_retries > rhs.m_retries;
-                    //--------------------------
-                }// end bool operator()(const ThreadTask& lhs, const ThreadTask& rhs) const
-                //--------------------------------------------------------------
-            };// end struct ComparatorLess
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------

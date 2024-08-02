@@ -38,18 +38,17 @@ ThreadPool::ThreadTask& ThreadPool::ThreadTask::operator=(ThreadTask&& other) no
     //--------------------------
 }// end ThreadPool::ThreadTask& ThreadPool::ThreadTask::operator=(ThreadTask&& other) noexcept
 //--------------------------------------------------------------
-bool ThreadPool::ThreadTask::operator==(const ThreadTask& other) const{
+std::strong_ordering ThreadPool::ThreadTask::operator<=>(const ThreadTask& other) const {
+    //--------------------------
     std::scoped_lock lock(m_mutex, other.m_mutex); // Lock both mutexes
-    return this == &other;
-}// end bool ThreadPool::ThreadTask::operator==(const ThreadTask& other) 
-//--------------------------------------------------------------
-bool ThreadPool::ThreadTask::operator<(const ThreadTask& other) const{
-    return ComparatorLess{}(*this, other);
-}// end bool ThreadPool::ThreadTask::operator<(const ThreadTask& other) const
-//--------------------------------------------------------------
-bool ThreadPool::ThreadTask::operator>(const ThreadTask& other) const{
-    return ComparatorMore{}(*this, other);
-}// end bool ThreadPool::ThreadTask::operator<(const ThreadTask& other) const
+    //--------------------------
+    if (auto cmp = m_priority <=> other.m_priority; cmp != 0) {
+        return cmp;
+    } // end if (auto cmp = m_priority <=> other.m_priority; cmp != 0)
+    //--------------------------
+    return m_retries <=> other.m_retries;
+    //--------------------------
+} // end std::strong_ordering ThreadPool::ThreadTask::operator<=>(const ThreadTask& other) const
 //--------------------------------------------------------------
 void ThreadPool::ThreadTask::execute(void){
     //--------------------------
