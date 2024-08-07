@@ -490,7 +490,7 @@ namespace ThreadPool{
             ThreadPool(ThreadPool&&)                 = delete;
             ThreadPool& operator=(ThreadPool&&)      = delete;
             //--------------------------
-            ~ThreadPool(void){
+            ~ThreadPool(void) {
                 //--------------------------
                 stop();
                 //--------------------------
@@ -523,7 +523,7 @@ namespace ThreadPool{
              * }
              * @endcode
              */
-            size_t threads_size(void) const{
+            size_t threads_size(void) const {
                 //--------------------------
                 return thread_Workers_size();
                 //--------------------------
@@ -559,7 +559,7 @@ namespace ThreadPool{
              * @note This function only returns the number of tasks that are in the queue and does
              * not account for tasks currently being executed by the worker threads.
              */
-            size_t queued_size(void) const{
+            size_t queued_size(void) const {
                 //--------------------------
                 return active_tasks_size();
                 //--------------------------
@@ -596,7 +596,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args){
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
                 return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -652,7 +652,7 @@ namespace ThreadPool{
              * @endcode
              */
             template <class F, class... Args>
-            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
                 //--------------------------
                 enqueue(std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
@@ -668,7 +668,7 @@ namespace ThreadPool{
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!static_cast<bool>(use_priority_queue) && !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and !std::is_void_v<std::invoke_result_t<F, Args...>>, std::future<std::invoke_result_t<F, Args...>>>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -693,7 +693,7 @@ namespace ThreadPool{
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
             template <class F, class... Args>
-            std::enable_if_t<!static_cast<bool>(use_priority_queue) && std::is_void_v<std::invoke_result_t<F, Args...>>, void>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, void>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -714,7 +714,7 @@ namespace ThreadPool{
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<(U > 0UL), void> create_task(const size_t& number_threads){
+            std::enable_if_t<(U > 0UL), void> create_task(const size_t& number_threads) {
                 //--------------------------
                 static thread_local size_t id = 0UL;
                 //--------------------------
@@ -915,7 +915,7 @@ namespace ThreadPool{
             }//end void stop(void)
             //--------------------------
             template <bool U = static_cast<bool>(use_priority_queue), typename = std::enable_if_t<U>>
-            void push_task(ThreadTask&& task){
+            void push_task(ThreadTask&& task) {
                 //--------------------------
                 m_tasks.push(std::move(task));
                 //--------------------------
@@ -952,13 +952,13 @@ namespace ThreadPool{
             //--------------------------
             // Method for the case when priority queue is NOT used
             template <bool U = static_cast<bool>(use_priority_queue), typename std::enable_if_t<!U, int> = 0>
-            void handle_error(const char* error){
+            void handle_error(const char* error) {
                 //--------------------------
                 std::cerr << "Error in task: " << error << std::endl;
                 //--------------------------
             }// end void handle_error(const char* error)
             //--------------------------
-            size_t thread_Workers_size(void) const{
+            size_t thread_Workers_size(void) const {
                 //--------------------------
                 std::unique_lock lock(m_mutex);
                 //--------------------------
@@ -988,7 +988,7 @@ namespace ThreadPool{
                 //--------------------------
             }// end std::optional<size_t> safe_increment(const size_t& value)
             //--------------------------
-            constexpr std::optional<std::jthread> assign_adoptive_thread(void){
+            constexpr std::optional<std::jthread> assign_adoptive_thread(void) {
                 //--------------------------
                 if constexpr (adoptive_tick > 0UL){
                     return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
