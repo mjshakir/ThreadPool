@@ -25,7 +25,7 @@
 /** @namespace ThreadPool
  * @brief A namespace containing the ThreadPool class.
  */
-namespace ThreadPool{
+namespace ThreadPool {
     //--------------------------------------------------------------
     /**
      * @enum ThreadMode
@@ -471,10 +471,10 @@ namespace ThreadPool{
                 //--------------------------
                 auto _threads_number = std::clamp(number_threads, m_lower_threshold, m_upper_threshold);
                 //--------------------------
-                if constexpr (adoptive_tick > 0UL){
+                if constexpr (adoptive_tick){
                     m_idle_threads.emplace();
                     m_idle_threads->reserve(_threads_number);
-                }//end if constexpr (adoptive_tick > 0UL)
+                }//end if constexpr (adoptive_tick)
                 //--------------------------
                 create_task(_threads_number);
                 //--------------------------
@@ -713,47 +713,44 @@ namespace ThreadPool{
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
-            template <size_t U = adoptive_tick>
-            std::enable_if_t<(U > 0UL), void> create_task(const size_t& number_threads) {
-                //--------------------------
-                static thread_local size_t id = 0UL;
+            void create_task(const size_t& number_threads) {
                 //--------------------------
                 m_workers.reserve(m_workers.size() + number_threads);
                 //--------------------------
                 for (size_t i = 0; i < number_threads; ++i) {
                     //--------------------------
-                    auto safe_id = safe_increment(id);
+                    if constexpr (!adoptive_tick){
+                        //--------------------------
+                        m_workers.emplace_back([this](std::stop_token stoken){this->worker_function(stoken);});
+                        //--------------------------
+                    }// end if constexpr (!adoptive_tick)
                     //--------------------------
-                    if(!safe_id.has_value()){
-                        break;
-                    }// end if(!safe_id.has_value())
+                    if constexpr(adoptive_tick){
+                        //--------------------------
+                        // Create a jthread with the worker function
+                        std::jthread _thread([this](std::stop_token stoken){this->worker_function(stoken);});
+                        //--------------------------
+                        // Obtain the thread ID after the thread has started
+                        const std::thread::id thread_id = _thread.get_id();
+                        //--------------------------
+                        // Insert the thread into the worker map using its thread ID
+                        m_workers.emplace(thread_id, std::move(_thread));
+                        //--------------------------
+                    }// end if constexpr(adoptive_tick)
                     //--------------------------
-                    id = safe_id.value();
-                    //--------------------------
-                    m_workers.emplace(id, [this, local_id = id](std::stop_token stoken) {
-                        this->worker_function(stoken, local_id);
-                    });
-                    //--------------------------
-                }// end  for (size_t i = 0; i < number_threads; ++i)
+                } // end for (size_t i = 0; i < number_threads; ++i)
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            template <size_t U = adoptive_tick>
-            std::enable_if_t<!U , void> create_task(const size_t& number_threads){
+            void worker_function(const std::stop_token& stoken){
                 //--------------------------
-                m_workers.reserve(m_workers.size() + number_threads);
+                std::optional<std::thread::id> id;
                 //--------------------------
-                for (size_t i = 0; i < number_threads; ++i) {
+                if constexpr (adoptive_tick){
                     //--------------------------
-                    m_workers.emplace_back([this](std::stop_token stoken) {
-                        this->worker_function(stoken);
-                    });
+                    id = std::this_thread::get_id();
                     //--------------------------
-                }// end  for (size_t i = 0; i < number_threads; ++i)
-                //--------------------------
-            }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
-            //--------------------------
-            void worker_function(const std::stop_token& stoken, const std::optional<size_t> id = std::nullopt){
+                }// end if constexpr (adoptive_tick)
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -764,15 +761,15 @@ namespace ThreadPool{
                         //--------------------------
                         std::unique_lock lock(m_mutex);
                         //--------------------------
-                        if constexpr (adoptive_tick > 0UL){
+                        if constexpr (adoptive_tick){
                             m_idle_threads->insert(id.value());
-                        }// end if constexpr (adoptive_tick > 0UL)
+                        }// end if constexpr (adoptive_tick)
                         //--------------------------
                         m_task_available_condition.wait(lock, [this, &stoken] {return stoken.stop_requested() or !m_tasks.empty();});
                         //--------------------------
-                        if constexpr (adoptive_tick > 0UL){
+                        if constexpr (adoptive_tick){
                             m_idle_threads->erase(id.value());
-                        }// end if constexpr (adoptive_tick > 0UL)
+                        }// end if constexpr (adoptive_tick)
                         //--------------------------
                         if (stoken.stop_requested() or m_tasks.empty()) {
                             //--------------------------
@@ -824,7 +821,7 @@ namespace ThreadPool{
             }// end void worker_function(void)
             //--------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<(U > 0UL), void> adjust_workers(void){
+            std::enable_if_t<U, void> adjust_workers(void){
                 //--------------------------
                 static const size_t threshold_ = static_cast<size_t>(std::ceil(m_upper_threshold*0.2));
                 //--------------------------
@@ -836,7 +833,7 @@ namespace ThreadPool{
                     //--------------------------
                     if (worker_count > task_count and !m_idle_threads->empty() and worker_count > threshold_) {
                         //--------------------------
-                        size_t thread_id_ = *m_idle_threads->begin();
+                        const std::thread::id thread_id_ = *m_idle_threads->begin();
                         //--------------------------
                         m_workers.at(thread_id_).request_stop();
                         m_task_available_condition.notify_all(); // Notify all threads to check for stop request
@@ -867,10 +864,7 @@ namespace ThreadPool{
             }// end void adjust_workers(void)
             //--------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<!U, void> adjust_workers(void) = delete;
-            //--------------------------
-            template <size_t U = adoptive_tick>
-            std::enable_if_t<(U > 0UL), void> adjustment_thread_function(const std::stop_token& stoken){
+            std::enable_if_t<U, void> adjustment_thread_function(const std::stop_token& stoken){
                 //--------------------------
                 while (!stoken.stop_requested()) {
                     //--------------------------
@@ -883,7 +877,10 @@ namespace ThreadPool{
             }// end void adjustment_thread_function(const std::stop_token& stoken)
             //--------------------------
             template <size_t U = adoptive_tick>
-            std::enable_if_t<!U, void> adjustment_thread_function(const std::stop_token& stoken) = delete;
+            std::enable_if_t<!U, void> adjust_workers(void)                                         = delete;
+            //--------------------------
+            template <size_t U = adoptive_tick>
+            std::enable_if_t<!U, void> adjustment_thread_function(const std::stop_token& stoken)    = delete;
             //--------------------------
             void stop(void){
                 //--------------------------
@@ -893,12 +890,12 @@ namespace ThreadPool{
                     //--------------------------
                     m_all_stopped_condition.wait(lock, [this] { return m_tasks.empty(); }); 
                     //--------------------------
-                    if constexpr (adoptive_tick > 0UL) {
+                    if constexpr (adoptive_tick) {
                         m_adoptive_thread->request_stop();
-                    } // end if constexpr (adoptive_tick > 0UL)
+                    } // end if constexpr (adoptive_tick)
                     //--------------------------
                     if(!m_workers.empty()){ 
-                        if constexpr (adoptive_tick > 0UL) {
+                        if constexpr (adoptive_tick) {
                             for (auto &[id, worker] : m_workers) {
                                 worker.request_stop(); // request each worker to stop
                             }// end for (auto &worker : m_workers)
@@ -906,7 +903,7 @@ namespace ThreadPool{
                             for (auto &worker : m_workers) {
                                 worker.request_stop(); // request each worker to stop
                             }// end for (auto &worker : m_workers)
-                        }// end if constexpr (adoptive_tick > 0UL)
+                        }// end if constexpr (adoptive_tick)
                     }// end if(!m_workers.empty())
                 }
                 //--------------------------
@@ -976,23 +973,11 @@ namespace ThreadPool{
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::active_tasks_size(void) const
             //--------------------------
-            template <size_t U = adoptive_tick>
-            std::enable_if_t<(U > 0UL), std::optional<size_t>> safe_increment(const size_t& value) {
+            std::optional<std::jthread> assign_adoptive_thread(void) {
                 //--------------------------
-                if (value == std::numeric_limits<size_t>::max()) {
-                    std::cerr << "Maximum Thread IDs have been reached" << std::endl;
-                    return std::nullopt;
-                }// end if (value == std::numeric_limits<size_t>::max())
-                //--------------------------
-                return value + 1UL;
-                //--------------------------
-            }// end std::optional<size_t> safe_increment(const size_t& value)
-            //--------------------------
-            constexpr std::optional<std::jthread> assign_adoptive_thread(void) {
-                //--------------------------
-                if constexpr (adoptive_tick > 0UL){
+                if constexpr (adoptive_tick){
                     return std::optional<std::jthread>([this](const std::stop_token& stoken){this->adjustment_thread_function(stoken);});
-                }// end if constexpr (adoptive_tick > 0UL)
+                }// end if constexpr (adoptive_tick)
                 //--------------------------
                 return std::nullopt;
                 //--------------------------
@@ -1002,10 +987,10 @@ namespace ThreadPool{
             //--------------------------------------------------------------
             const size_t m_upper_threshold;
             //--------------------------
-            using WorkersType = std::conditional_t<(adoptive_tick > 0UL), std::unordered_map<size_t, std::jthread>, std::vector<std::jthread>>;
+            using WorkersType = std::conditional_t<adoptive_tick, std::unordered_map<std::thread::id, std::jthread>, std::vector<std::jthread>>;
             WorkersType m_workers;
             //--------------------------
-            std::optional<std::unordered_set<size_t>> m_idle_threads;
+            std::optional<std::unordered_set<std::thread::id>> m_idle_threads;
             //--------------------------
             using TaskContainerType = std::conditional_t<static_cast<bool>(use_priority_queue), PriorityQueue<ThreadTask>, std::deque<std::function<void()>>>;
             TaskContainerType m_tasks;
@@ -1018,8 +1003,8 @@ namespace ThreadPool{
             //--------------------------
             // Definitions
             //--------------------------
-            static constexpr auto CHECK_INTERVAL = std::chrono::nanoseconds(static_cast<int64_t>(adoptive_tick)); 
-            static constexpr size_t m_lower_threshold = 1UL;
+            static constexpr auto CHECK_INTERVAL        = std::chrono::nanoseconds(static_cast<int64_t>(adoptive_tick)); 
+            static constexpr size_t m_lower_threshold   = 1UL;
         //--------------------------------------------------------------
     };// end class ThreadPool
     //--------------------------------------------------------------
