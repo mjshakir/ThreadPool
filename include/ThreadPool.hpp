@@ -730,13 +730,15 @@ namespace ThreadPool{
                     if constexpr(adoptive_tick > 0UL){
                         //--------------------------
                         // Create a jthread with the member function pointer
-                        std::jthread thread_(&ThreadPool::worker_function, this);
+                        std::jthread _thread([this](std::stop_token stoken) {
+                            this->worker_function(stoken);
+                        });
                         //--------------------------
                         // Obtain the thread ID after the thread has started
-                        const std::thread::id thread_id = thread_.get_id();
+                        const std::thread::id thread_id = _thread.get_id();
                         //--------------------------
                         // Insert the thread into the worker map using its thread ID
-                        m_workers.emplace(thread_id, std::move(thread_));
+                        m_workers.emplace(thread_id, std::move(_thread));
                         //--------------------------
                         // Add the new thread ID to the set of idle threads
                         m_idle_threads->insert(thread_id);
