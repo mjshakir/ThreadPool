@@ -468,7 +468,7 @@ namespace ThreadPool {
                                     static_cast<size_t>(std::thread::hardware_concurrency()) : m_lower_threshold),
                                 m_adoptive_thread(assign_adoptive_thread()){
                 //--------------------------
-                auto _threads_number = std::clamp(number_threads, m_lower_threshold, m_upper_threshold);
+                const size_t _threads_number = std::clamp(number_threads, m_lower_threshold, m_upper_threshold);
                 //--------------------------
                 if constexpr (adoptive_tick) {
                     m_idle_threads.emplace();
