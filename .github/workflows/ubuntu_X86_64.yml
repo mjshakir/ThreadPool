@@ -36,3 +36,12 @@ jobs:
     - name: Test
       working-directory: build
       run: ctest --output-on-failure
+
+    - name: Run PriorityQueue Benchmarks
+      run: ./build/benchmarkbin/ThreadPool_PriorityQueue_Benchmark
+  
+    - name: Run ThreadTask Benchmarks
+      run: ./build/benchmarkbin/ThreadPool_ThreadTask_Benchmark
+    
+    - name: Run ThreadPool Benchmarks
+      run: ./build/benchmarkbin/ThreadPool_ThreadPool_Benchmark
