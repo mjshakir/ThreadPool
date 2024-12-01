@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.15 FATAL_ERROR)
 #------------------------------------------------------------------------------------------
 # Determine if ThreadPool is built as a standalone project or included by other projects
 set(THREADPOOL_STANDALONE_PROJECT OFF)
@@ -9,7 +9,7 @@ endif()
 # Get the name of the folder and use it as the project name
 get_filename_component(PARENT_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 string(REPLACE " " "_" PARENT_DIR_NAME ${PARENT_DIR_NAME})
-project(${PARENT_DIR_NAME} VERSION 1.0 DESCRIPTION "A Threadpool function library" LANGUAGES CXX)
+project(${PARENT_DIR_NAME} VERSION 1.13.0 DESCRIPTION "A Threadpool function library" LANGUAGES CXX)
 #------------------------------------------------------------------------------------------
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -55,6 +55,7 @@ endif()
 option(BUILD_THREADPOOL_SHARED_LIBS "Build using shared libraries" ON)
 option(BUILD_THREADPOOL_EXAMPLE "Build ThreadPool example" ${THREADPOOL_STANDALONE_PROJECT})
 option(BUILD_THREADPOOL_TESTS "Build ThreadPool tests" ${THREADPOOL_STANDALONE_PROJECT})
+option(BUILD_THREADPOOL_BENCHMARK "Build ThreadPool benchmarks" ${THREADPOOL_STANDALONE_PROJECT})
 #------------------------------------------------------------------------------------------
 # Force colored output
 option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
@@ -148,6 +149,11 @@ endif()
 if(BUILD_THREADPOOL_TESTS AND THREADPOOL_STANDALONE_PROJECT)
     enable_testing()
     add_subdirectory(test)
+endif()
+#------------------------------------------------------------------------------------------
+# Enable benchmarks and add the benchmark directory if this is a standalone project
+if(BUILD_THREADPOOL_BENCHMARK AND THREADPOOL_STANDALONE_PROJECT)
+    add_subdirectory(benchmark)
 endif()
 #------------------------------------------------------------------------------------------
 # Doxygen (only if it's a standalone project)
