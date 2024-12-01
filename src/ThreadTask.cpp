@@ -14,7 +14,7 @@ ThreadPool::ThreadTask::ThreadTask(ThreadTask&& other) noexcept :   m_priority(o
                                                                     m_state(other.m_state) {
           
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::scoped_lock lock(m_mutex, other.m_mutex);
         m_function = std::move(other.m_function);
         m_promise = std::move(other.m_promise);
     }
