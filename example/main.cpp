@@ -102,6 +102,25 @@ int main(void)
         }
     }
     {
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
+        std::vector<std::future<int>> results;
+        results.reserve(_size);
+        for (int i = 0; i < _size; ++i) {
+            results.emplace_back(_threads.queue([](int value) { return value * value; }, i).get_future());
+        }
+
+        for(auto& result : results){
+            std::cout << "ThreadMode::PRIORITY Future Return Value:[" << result.get() << "]\n";
+        }
+        std::cout << std::flush;
+    }
+    {
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
+        for (size_t i = 0; i < _size; ++i) {
+            _threads.queue([](int value) { std::cout << "ThreadMode::PRIORITY Print Value:[" << value << "]" << std::endl; }, i).set_priority(_size-i);
+        }
+    }
+    {
         
         std::cout << "Running complex task with ThreadPool and without ThreadPool using ThreadMode::STANDARD " << std::endl;
 
