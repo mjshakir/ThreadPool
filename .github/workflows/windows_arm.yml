@@ -27,6 +27,12 @@ jobs:
         vcpkg search gtest
         vcpkg install gtest:arm64-windows
         vcpkg integrate install
+    
+    - name: Install Benchmark
+      run: |
+        vcpkg search benchmark
+        vcpkg install benchmark:x64-windows
+        vcpkg integrate install
 
     - name: Setup CMake and Ninja
       uses: lukka/get-cmake@v3.21.1
