@@ -602,6 +602,40 @@ namespace ThreadPool {
             }// end TaskBuilder queue(F&& f, Args&&... args)// end TaskBuilder queue(F&& f, Args&&... args)
             //--------------------------
             /**
+             * @brief Enqueues a task with priority and retry settings by returning a TaskBuilder object.
+             * 
+             * @details This method creates a TaskBuilder instance that allows the caller to set additional
+             * properties for the task such as priority and number of retries. This overload of `enqueue` is
+             * specifically enabled when `use_priority_queue` is true, allowing tasks to be queued in a priority-based fashion.
+             * 
+             * @note The task is submitted automatically to the thread pool and the TaskBuilder's `submit` method is called automatically
+             * 
+             * @tparam F Type of the callable to be
+             * @tparam Args Variadic template for the arguments list of the callable.
+             * 
+             * @return TaskBuilder<F, Args...> A builder object for setting task properties and submitting the task.
+             * 
+             * @example
+             * @code
+             * ThreadPool pool; // ThreadPool must be instantiated with priority queue support enabled.
+             * auto task = pool.queue([](int a, int b) { return a + b; }, 2, 3);
+             * task.set_priority(5).set_retries(2); // Optional: set priority and retries.
+             * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
+             * @endcode
+             * @code
+             * ThreadPool pool; // ThreadPool must be instantiated with priority queue support enabled.
+             * auto task = pool.queue([](int a, int b) { return a + b; }, 2, 3).set_priority(5).set_retries(2); // Optional: set priority and retries.
+             * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
+             * @endcode
+             */
+            template <class F, class... Args>
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(F&& f, Args&&... args) {
+                //--------------------------
+                return TaskBuilder<F, Args...>(*this, true, std::forward<F>(f), std::forward<Args>(args)...);
+                //--------------------------
+            }// end TaskBuilder queue(F&& f, Args&&... args)// end TaskBuilder queue(F&& f, Args&&... args)
+            //--------------------------
+            /**
              * @brief Queue a new task in the thread pool.
              *
              * @details This version of the `queue` function template is enabled only when
