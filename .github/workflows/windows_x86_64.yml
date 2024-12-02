@@ -81,7 +81,7 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest --output-on-failure -C ${{ env.BUILD_TYPE }} 
+      run: ctest -LE benchmark --output-on-failure -C ${{ env.BUILD_TYPE }} 
 
     - name: Diagnostics if build fails
       if: failure()

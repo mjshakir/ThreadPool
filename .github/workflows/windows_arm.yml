@@ -80,4 +80,4 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest --output-on-failure -C Release
+      run: ctest -LE benchmark --output-on-failure -C Release
