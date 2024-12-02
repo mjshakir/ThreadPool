@@ -43,6 +43,9 @@ function(create_test_target TARGET_NAME SOURCE_FILE)
     # Enable testing and add the test to CTest
     enable_testing()
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+
+    # Add a label to the test so that it can be filtered with ctest
+    set_tests_properties(${TARGET_NAME} PROPERTIES LABELS "unit")
 endfunction()
 
 create_test_target(PriorityQueueTest PriorityQueueTest.cpp)

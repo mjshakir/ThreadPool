@@ -43,6 +43,9 @@ function(create_benchmark_target TARGET_NAME SOURCE_FILE)
     # Enable testing and add the benchmark to CTest
     enable_testing()
     add_test(NAME ${TARGET_NAME} COMMAND ${TARGET_NAME})
+
+    # Add a label to the test so that it can be filtered with ctest
+    set_tests_properties(${TARGET_NAME} PROPERTIES LABELS "benchmark")
 endfunction()
 #------------------------------------------------------------------------------------------
 # Add the benchmarks without the 'benchmark/' prefix since we are already in the benchmark directory
