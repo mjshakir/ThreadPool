@@ -115,11 +115,11 @@ TEST_F(ThreadPoolManagerTest, InvalidTickConfiguration) {
 
 TEST_F(ThreadPoolManagerTest, ThreadPoolReuse) {
     // Configure the thread pool and retrieve it
-    EXPECT_TRUE(manager->configure<ThreadPool::ThreadMode::STANDARD, 0, ThreadPool::PrecedenceLevel::MEDIUM>());
+    EXPECT_TRUE((manager->configure<ThreadPool::ThreadMode::STANDARD, 0, ThreadPool::PrecedenceLevel::MEDIUM>()));
     ThreadPool::ThreadPool<>& pool1 = manager->get_thread_pool();
 
     // Attempt to reconfigure and retrieve the pool
-    EXPECT_FALSE(manager->configure<ThreadPool::ThreadMode::PRIORITY, 1000000, ThreadPool::PrecedenceLevel::LOW>());
+    EXPECT_FALSE((manager->configure<ThreadPool::ThreadMode::PRIORITY, 1000000, ThreadPool::PrecedenceLevel::LOW>()));
     ThreadPool::ThreadPool<>& pool2 = manager->get_thread_pool();
 
     // Ensure the same pool instance is reused
