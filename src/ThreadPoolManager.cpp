@@ -5,7 +5,7 @@
 //--------------------------------------------------------------
 // Standard library
 //--------------------------------------------------------------
-#include <thread>
+#include <stdexcept>
 //--------------------------------------------------------------
 ThreadPool::ThreadPoolManager::ThreadPoolManager(void) :    m_instance(nullptr),
                                                             m_current_mode(ThreadMode::STANDARD),
@@ -30,7 +30,11 @@ ThreadPool::ThreadPool<>& ThreadPool::ThreadPoolManager::get_thread_pool(void) c
         return default_pool;  // Fallback: Provide a default pool.
     } // end if (!m_instance)
     //--------------------------
-    return *m_instance;
+    try {
+        return std::any_cast<ThreadPool<>&>(*m_instance);
+    } catch (const std::bad_any_cast&) {
+        throw std::logic_error("ThreadPool type mismatch in get_thread_pool");
+    } // end catch (const std::bad_any_cast&)
     //--------------------------
 } // end ThreadPool::ThreadPoolManager::get_thread_pool(void)
 //--------------------------------------------------------------

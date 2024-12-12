@@ -5,6 +5,8 @@
 //--------------------------------------------------------------
 #include <iostream>
 #include <memory>
+#include <any>
+#include <thread>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -25,12 +27,12 @@ namespace ThreadPool {
             //--------------------------
             // Set the mode and tick for the global ThreadPool. Must be called once before accessing the ThreadPool.
             template <ThreadMode Mode, size_t Tick, PrecedenceLevel Precedence>
-            constexpr bool configure(const size_t& number_threads = 0UL) {
+            constexpr bool configure(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency())) {
                 bool _adaptive = (Tick > 0UL);
                 if (m_instance) {
                     if (should_override_configuration(Mode, _adaptive, Precedence)) {
                         //--------------------------
-                        m_instance = std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads));
+                        m_instance = std::make_unique<std::any>(std::make_any<ThreadPool<Mode, Tick>>(number_threads));
                         update_configuration(Mode, _adaptive, Precedence);
                         return true;
                         //--------------------------
@@ -40,7 +42,7 @@ namespace ThreadPool {
                     //--------------------------
                 } // end if (m_instance)
                 //--------------------------
-                m_instance = std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads));
+                m_instance = std::make_unique<std::any>(std::make_any<ThreadPool<Mode, Tick>>(number_threads));
                 update_configuration(Mode, _adaptive, Precedence);
                 //--------------------------
                 return true;
@@ -64,7 +66,7 @@ namespace ThreadPool {
             ThreadPoolManager(void);
             ~ThreadPoolManager(void) = default;
             //--------------------------
-            std::unique_ptr<ThreadPool<>> m_instance; // Managed uniquely within ThreadPoolManager
+            std::unique_ptr<std::any> m_instance;
             ThreadMode m_current_mode;
             bool m_adaptive_tick;
             PrecedenceLevel m_current_precedence;
