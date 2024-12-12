@@ -30,19 +30,19 @@ namespace ThreadPool {
             constexpr bool configure(const size_t& number_threads = static_cast<size_t>(std::thread::hardware_concurrency())) {
                 bool _adaptive = (Tick > 0UL);
                 if (m_instance) {
-                    if (should_override_configuration(Mode, _adaptive, Precedence)) {
+                    if (reconfiguration(Mode, _adaptive, Precedence)) {
                         //--------------------------
-                        m_instance = std::make_unique<std::any>(std::make_any<ThreadPool<Mode, Tick>>(number_threads));
+                        m_instance = std::make_unique<std::any>(ThreadPool<Mode, Tick>(number_threads));
                         update_configuration(Mode, _adaptive, Precedence);
                         return true;
                         //--------------------------
-                    } // end if (should_override_configuration(Mode, _adaptive, Precedence))
+                    } // end if (reconfiguration(Mode, _adaptive, Precedence))
                     //--------------------------
                     return false;
                     //--------------------------
                 } // end if (m_instance)
                 //--------------------------
-                m_instance = std::make_unique<std::any>(std::make_any<ThreadPool<Mode, Tick>>(number_threads));
+                m_instance = std::make_unique<std::any>(ThreadPool<Mode, Tick>(number_threads));
                 update_configuration(Mode, _adaptive, Precedence);
                 //--------------------------
                 return true;
@@ -57,8 +57,32 @@ namespace ThreadPool {
             //--------------------------------------------------------------
         protected:
             //--------------------------------------------------------------
-            constexpr bool should_override_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) const;
-            constexpr void update_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence);
+            constexpr bool reconfiguration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) const {
+                //--------------------------
+                // Higher precedence overrides lower precedence
+                if (precedence > m_current_precedence) {
+                    return true;
+                } // end if (precedence > m_current_precedence)
+                //--------------------------
+                // Priority mode overrides standard mode if precedence is the same
+                if (precedence == m_current_precedence and mode == ThreadMode::PRIORITY and m_current_mode == ThreadMode::STANDARD) {
+                    return true;
+                } // end if (precedence == m_current_precedence and mode == ThreadMode::PRIORITY and m_current_mode == ThreadMode::STANDARD)
+                //--------------------------
+                // Non-adaptive tick overrides adaptive tick if precedence and mode are the same
+                if (precedence == m_current_precedence and mode == m_current_mode and !adaptive_tick and m_adaptive_tick) {
+                    return true;
+                } // end if (precedence == m_current_precedence and mode == m_current_mode and !adaptive_tick and m_adaptive_tick)
+                //--------------------------
+                return false;
+                //--------------------------
+            } // end reconfiguration
+            //--------------------------
+            constexpr void update_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) {
+                m_current_mode          = mode;
+                m_adaptive_tick         = adaptive_tick;
+                m_current_precedence    = precedence;
+            } // end ThreadPoolManager::update_configuration
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
