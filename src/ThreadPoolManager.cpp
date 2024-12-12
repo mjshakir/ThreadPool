@@ -38,30 +38,30 @@ ThreadPool::ThreadPool<>& ThreadPool::ThreadPoolManager::get_thread_pool(void) c
     //--------------------------
 } // end ThreadPool::ThreadPoolManager::get_thread_pool(void)
 //--------------------------------------------------------------
-constexpr bool ThreadPool::ThreadPoolManager::should_override_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) const {
-    //--------------------------
-    // Higher precedence overrides lower precedence
-    if (precedence > m_current_precedence) {
-        return true;
-    } // end if (precedence > m_current_precedence)
-    //--------------------------
-    // Priority mode overrides standard mode if precedence is the same
-    if (precedence == m_current_precedence && mode == ThreadMode::PRIORITY && m_current_mode == ThreadMode::STANDARD) {
-        return true;
-    } // end if (precedence == m_current_precedence && mode == ThreadMode::PRIORITY && m_current_mode == ThreadMode::STANDARD)
-    //--------------------------
-    // Non-adaptive tick overrides adaptive tick if precedence and mode are the same
-    if (precedence == m_current_precedence && mode == m_current_mode && !adaptive_tick && m_adaptive_tick) {
-        return true;
-    } // end if (precedence == m_current_precedence && mode == m_current_mode && !adaptive_tick && m_adaptive_tick)
-    //--------------------------
-    return false;
-    //--------------------------
-} // end ThreadPoolManager::should_override_configuration
+// constexpr bool ThreadPool::ThreadPoolManager::reconfiguration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) const {
+//     //--------------------------
+//     // Higher precedence overrides lower precedence
+//     if (precedence > m_current_precedence) {
+//         return true;
+//     } // end if (precedence > m_current_precedence)
+//     //--------------------------
+//     // Priority mode overrides standard mode if precedence is the same
+//     if (precedence == m_current_precedence and mode == ThreadMode::PRIORITY and m_current_mode == ThreadMode::STANDARD) {
+//         return true;
+//     } // end if (precedence == m_current_precedence and mode == ThreadMode::PRIORITY and m_current_mode == ThreadMode::STANDARD)
+//     //--------------------------
+//     // Non-adaptive tick overrides adaptive tick if precedence and mode are the same
+//     if (precedence == m_current_precedence and mode == m_current_mode and !adaptive_tick and m_adaptive_tick) {
+//         return true;
+//     } // end if (precedence == m_current_precedence and mode == m_current_mode and !adaptive_tick and m_adaptive_tick)
+//     //--------------------------
+//     return false;
+//     //--------------------------
+// } // end ThreadPoolManager::reconfiguration
 //--------------------------------------------------------------
-constexpr void ThreadPool::ThreadPoolManager::update_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) {
-    m_current_mode          = mode;
-    m_adaptive_tick         = adaptive_tick;
-    m_current_precedence    = precedence;
-} // end ThreadPoolManager::update_configuration
+// constexpr void ThreadPool::ThreadPoolManager::update_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) {
+//     m_current_mode          = mode;
+//     m_adaptive_tick         = adaptive_tick;
+//     m_current_precedence    = precedence;
+// } // end ThreadPoolManager::update_configuration
 //--------------------------------------------------------------
