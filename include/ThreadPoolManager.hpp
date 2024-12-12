@@ -5,11 +5,6 @@
 //--------------------------------------------------------------
 #include <iostream>
 #include <memory>
-#include <functional>
-#include <stdexcept>
-#include <optional>
-#include <atomic>
-#include <type_traits>
 //--------------------------------------------------------------
 // User Defined library
 //--------------------------------------------------------------
@@ -61,8 +56,8 @@ namespace ThreadPool {
             //--------------------------------------------------------------
         protected:
             //--------------------------------------------------------------
-            constexpr bool should_override_configuration(ThreadMode mode, bool isAdaptiveTick, PrecedenceLevel precedence) const;
-            constexpr void update_configuration(ThreadMode mode, bool isAdaptiveTick, PrecedenceLevel precedence);
+            constexpr bool should_override_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence) const;
+            constexpr void update_configuration(const ThreadMode& mode, bool adaptive_tick, const PrecedenceLevel& precedence);
             //--------------------------------------------------------------
         private:
             //--------------------------------------------------------------
