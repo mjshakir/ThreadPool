@@ -88,6 +88,8 @@
         "ios": "cpp",
         "locale": "cpp",
         "source_location": "cpp",
-        "queue": "cpp"
+        "queue": "cpp",
+        "print": "cpp",
+        "stack": "cpp"
     }
 }
