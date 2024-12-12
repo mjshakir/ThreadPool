@@ -35,7 +35,7 @@ jobs:
 
     - name: Test
       working-directory: build
-      run: ctest --output-on-failure
+      run: ctest -LE benchmark --output-on-failure
 
     - name: Run PriorityQueue Benchmarks
       run: ./build/benchmarkbin/ThreadPool_PriorityQueue_Benchmark
