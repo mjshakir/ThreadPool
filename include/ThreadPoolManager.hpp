@@ -26,23 +26,22 @@ namespace ThreadPool {
             // Set the mode and tick for the global ThreadPool. Must be called once before accessing the ThreadPool.
             template <ThreadMode Mode, size_t Tick, PrecedenceLevel Precedence>
             constexpr bool configure(const size_t& number_threads = 0UL) {
-                bool isAdaptive = (Tick > 0UL);
+                bool _adaptive = (Tick > 0UL);
                 if (m_instance) {
-                    if (should_override_configuration(Mode, isAdaptive, Precedence)) {
+                    if (should_override_configuration(Mode, _adaptive, Precedence)) {
                         //--------------------------
                         m_instance = std::move(std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads)));
-                        update_configuration(Mode, isAdaptive, Precedence);
+                        update_configuration(Mode, _adaptive, Precedence);
                         return true;
                         //--------------------------
-                    } else {
-                        //--------------------------
-                        return false;
-                        //--------------------------
-                    } // end else
+                    } // end if (should_override_configuration(Mode, _adaptive, Precedence))
+                    //--------------------------
+                    return false;
+                    //--------------------------
                 } // end if (m_instance)
                 //--------------------------
                 m_instance = std::move(std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads)));
-                update_configuration(Mode, isAdaptive, Precedence);
+                update_configuration(Mode, _adaptive, Precedence);
                 //--------------------------
                 return true;
                 //--------------------------
