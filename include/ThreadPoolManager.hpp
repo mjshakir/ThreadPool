@@ -30,7 +30,7 @@ namespace ThreadPool {
                 if (m_instance) {
                     if (should_override_configuration(Mode, _adaptive, Precedence)) {
                         //--------------------------
-                        m_instance = std::move(std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads)));
+                        m_instance = std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads));
                         update_configuration(Mode, _adaptive, Precedence);
                         return true;
                         //--------------------------
@@ -40,7 +40,7 @@ namespace ThreadPool {
                     //--------------------------
                 } // end if (m_instance)
                 //--------------------------
-                m_instance = std::move(std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads)));
+                m_instance = std::unique_ptr<ThreadPool<>>(new ThreadPool<Mode, Tick>(number_threads));
                 update_configuration(Mode, _adaptive, Precedence);
                 //--------------------------
                 return true;
