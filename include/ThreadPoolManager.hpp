@@ -49,7 +49,7 @@ namespace ThreadPool {
             } // end bool configure(void)
             //--------------------------
             // Check if the ThreadPool is already initialized
-            constexpr bool initialized(void) const;
+            bool initialized(void) const;
             //--------------------------
             // Get the global ThreadPool instance
             ThreadPool<>& get_thread_pool(void) const;

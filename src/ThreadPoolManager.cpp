@@ -19,7 +19,7 @@ ThreadPool::ThreadPoolManager& ThreadPool::ThreadPoolManager::get_instance(void)
     return instance;
 } // end ThreadPool::ThreadPoolManager::get_instance(void)
 //--------------------------------------------------------------
-constexpr bool ThreadPool::ThreadPoolManager::initialized(void) const {
+bool ThreadPool::ThreadPoolManager::initialized(void) const {
     return static_cast<bool>(m_instance);
 } // end ThreadPool::ThreadPoolManager::initialized(void)
 //--------------------------------------------------------------
