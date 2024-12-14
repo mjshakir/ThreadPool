@@ -22,6 +22,7 @@ endif
 threadpool_includes = include_directories('include')
 threadpool_sources = files(
   'src/ThreadPool.cpp',
+  'src/ThreadMode.cpp',
   'src/PriorityQueue.cpp',
   'src/ThreadTask.cpp'
 )
@@ -122,6 +123,7 @@ endif
 install_headers(
   files(
     'include/ThreadPool.hpp',
+    'src/ThreadMode.hpp',
     'include/PriorityQueue.hpp',
     'include/ThreadTask.hpp'
   ),
