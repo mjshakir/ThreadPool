@@ -74,6 +74,7 @@ set(THREADPOOL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 # Define the source files
 set(THREADPOOL_SOURCES
     ${THREADPOOL_SOURCE_DIR}/ThreadPool.cpp
+    ${THREADPOOL_SOURCE_DIR}/ThreadMode.cpp
     ${THREADPOOL_SOURCE_DIR}/PriorityQueue.cpp
     ${THREADPOOL_SOURCE_DIR}/ThreadTask.cpp
 )
