@@ -2,11 +2,25 @@
 #include <chrono>
 #include <cmath>
 #include "ThreadPool.hpp"
+#if THREADPOOL_ENABLE_SINGLETON
+    #include "ThreadPoolManager.hpp"
+#endif
 
 constexpr size_t _size = 10UL;
 constexpr size_t TASKS = 10000UL;
 constexpr size_t ITERATIONS = 100000UL;
 
+#if THREADPOOL_ENABLE_SINGLETON
+    void runThreadPoolManager(void) {
+        auto& _thread_pool = ThreadPool::ThreadPoolManager::get_instance(_size).get_thread_pool();
+
+        std::cout   << "Testing ThreadPoolManager Singleton"
+                    << " | ThreadMode mode: " << ThreadPool::ThreadMode_name(_thread_pool.mode()) 
+                    << " | Adoptive: " << std::boolalpha << _thread_pool.adoptive()
+                    << " | Adoptive Tick: " << _thread_pool.adoptive_tick_size() << std::endl;
+
+    }// end void runThreadPoolManager(void)
+#endif
 // Define a computationally intensive task.
 double complexTask(size_t iteration) {
     double result = 0.0;
@@ -60,9 +74,13 @@ double runWithThreadPoolDeque(void) {
     return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 }// end double runWithThreadPoolDeque(void)
 
-int main(void)
-{
-    
+int main(void) {
+
+#if THREADPOOL_ENABLE_SINGLETON
+    {
+        runThreadPoolManager();
+    }
+#endif
     {
         ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
         std::vector<std::future<int>> results;
