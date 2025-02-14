@@ -9,7 +9,7 @@ endif()
 # Get the name of the folder and use it as the project name
 get_filename_component(PARENT_DIR_NAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 string(REPLACE " " "_" PARENT_DIR_NAME ${PARENT_DIR_NAME})
-project(${PARENT_DIR_NAME} VERSION 1.13.0 DESCRIPTION "A Threadpool function library" LANGUAGES CXX)
+project(${PARENT_DIR_NAME} VERSION 2.0.0 DESCRIPTION "A Threadpool function library" LANGUAGES CXX)
 #------------------------------------------------------------------------------------------
 # Set the C++ standard
 set(CMAKE_CXX_STANDARD 20)
@@ -35,7 +35,6 @@ if(THREADPOOL_STANDALONE_PROJECT)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-    # message(STATUS "Library output directory: ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
     # Optionally, to set these directories only for specific build configurations (Debug, Release, etc.),
     # you can use the following approach:
     # set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin)
@@ -53,10 +52,28 @@ endif()
 #------------------------------------------------------------------------------------------
 # Offer switches for the type of the library and optional builds
 option(BUILD_THREADPOOL_SHARED_LIBS "Build using shared libraries" ON)
-option(BUILD_THREADPOOL_EXAMPLE "Build ThreadPool example" ${THREADPOOL_STANDALONE_PROJECT})
-option(BUILD_THREADPOOL_TESTS "Build ThreadPool tests" ${THREADPOOL_STANDALONE_PROJECT})
-option(BUILD_THREADPOOL_BENCHMARK "Build ThreadPool benchmarks" ${THREADPOOL_STANDALONE_PROJECT})
-#------------------------------------------------------------------------------------------
+option(BUILD_THREADPOOL_SINGLETON "Enable building a singleton-based ThreadPoolManager." OFF)
+option(BUILD_THREADPOOL_EXAMPLE "Build ThreadPool example." ${THREADPOOL_STANDALONE_PROJECT})
+option(BUILD_THREADPOOL_TESTS "Build ThreadPool tests." ${THREADPOOL_STANDALONE_PROJECT})
+option(BUILD_THREADPOOL_BENCHMARK "Build ThreadPool benchmarks." ${THREADPOOL_STANDALONE_PROJECT})
+option(BUILD_THREADPOOL_DEFAULT_MODE "If ON => default to PRIORITY (1) ON, else STANDARD (0) OFF." OFF)
+#------------------------------
+if(BUILD_THREADPOOL_DEFAULT_MODE)
+    set(THREADPOOL_DEFAULT_MODE "1" CACHE STRING "Default fallback mode if no submodule requests anything" FORCE)
+else()
+    set(THREADPOOL_DEFAULT_MODE "0" CACHE STRING "Default fallback mode if no submodule requests anything" FORCE)
+endif()
+set(BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK "1000000" CACHE STRING "Default fallback adoptive tick")
+#------------------------------
+message(STATUS "THREADPOOL_STANDALONE_PROJECT: ${THREADPOOL_STANDALONE_PROJECT}")
+message(STATUS "BUILD_THREADPOOL_SHARED_LIBS: ${BUILD_THREADPOOL_SHARED_LIBS}")
+message(STATUS "BUILD_THREADPOOL_EXAMPLE: ${BUILD_THREADPOOL_EXAMPLE}")
+message(STATUS "BUILD_THREADPOOL_TESTS: ${BUILD_THREADPOOL_TESTS}")
+message(STATUS "BUILD_THREADPOOL_BENCHMARK: ${BUILD_THREADPOOL_BENCHMARK}")
+message(STATUS "BUILD_THREADPOOL_SINGLETON: ${BUILD_THREADPOOL_SINGLETON}")
+message(STATUS "BUILD_THREADPOOL_DEFAULT_MODE: ${BUILD_THREADPOOL_DEFAULT_MODE}")
+message(STATUS "BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK: ${BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK}")
+#------------------------------
 # Force colored output
 option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." OFF)
 if(${FORCE_COLORED_OUTPUT})
@@ -67,6 +84,12 @@ if(${FORCE_COLORED_OUTPUT})
     endif()
 endif()
 #------------------------------------------------------------------------------------------
+# Include ThreadPoolUnifyRequests.cmake
+include(${CMAKE_CURRENT_SOURCE_DIR}/ThreadPoolUnifyRequests.cmake)
+#------------------------------
+# Actually unify requests now
+_threadpool_unify_requests()
+# #------------------------------------------------------------------------------------------
 # Define the source and include directories
 set(THREADPOOL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(THREADPOOL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
@@ -78,6 +101,13 @@ set(THREADPOOL_SOURCES
     ${THREADPOOL_SOURCE_DIR}/PriorityQueue.cpp
     ${THREADPOOL_SOURCE_DIR}/ThreadTask.cpp
 )
+#------------------------------
+# Conditionally add ThreadPoolManager.cpp if the singleton is ON
+if(BUILD_THREADPOOL_SINGLETON)
+    list(APPEND THREADPOOL_SOURCES
+        src/ThreadPoolManager.cpp
+    )
+endif()
 #------------------------------------------------------------------------------------------
 # Define the ThreadPool library target
 set(THREADPOOL_LIBRARY_NAME "${THREADPOOL_PROJECT_NAME}_lib")
@@ -93,6 +123,14 @@ endif()
 target_include_directories(${PROJECT_NAME} PUBLIC 
     $<BUILD_INTERFACE:${THREADPOOL_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
+)
+#------------------------------------------------------------------------------------------
+# Pass final config as compile definitions
+target_compile_definitions(${PROJECT_NAME}
+    PUBLIC
+    THREADPOOL_ENABLE_SINGLETON=$<BOOL:${BUILD_THREADPOOL_SINGLETON}>
+    THREADPOOL_MODE=${THREADPOOL_MODE}
+    THREADPOOL_ADOPTIVE_TICK=${THREADPOOL_ADOPTIVE_TICK}
 )
 #------------------------------------------------------------------------------------------
 # Alias for ThreadPool library
