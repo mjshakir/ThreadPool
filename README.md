@@ -113,6 +113,81 @@ Ninja is known for its speed and is the preferred option for many developers. Fo
 
 Note: If you haven't installed Ninja, you can do so by following the instructions on [Ninja's GitHub page](https://github.com/ninja-build/ninja).
 
+## Advanced Configuration and Integration
+
+### Standalone Build Options
+
+When building ThreadPool as a standalone project, you can customize its behavior using several CMake options:
+
+- **BUILD_THREADPOOL_SINGLETON**  
+  Enables a singleton-based `ThreadPoolManager`.  
+  *Default: OFF*  
+  *Usage:* Set to `ON` to have a single, globally accessible instance of the thread pool.
+
+- **BUILD_THREADPOOL_DEFAULT_MODE**  
+  Specifies the default scheduling mode if no submodule requests are made.  
+  - `ON` defaults to PRIORITY (`1`).
+  - `OFF` defaults to STANDARD (`0`).  
+  *Default: OFF (STANDARD)*
+
+- **BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK**  
+  Sets the default adaptive tick value.  
+  A tick value of `0` means “non‑adaptive” behavior and takes precedence over any nonzero (adaptive) value.  
+  *Default: 1000000*
+
+These options control the ThreadPool behavior when built on its own
+
+- **Example:**
+```bash
+cmake -DFORCE_COLORED_OUTPUT=ON -DBUILD_THREADPOOL_SINGLETON=ON -DBUILD_THREADPOOL_DEFAULT_MODE=0 -DBUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK=1500000 -DCMAKE_BUILD_TYPE=Release -B build -G Ninja;
+```
+
+### Integrating ThreadPool as a Submodule
+
+When ThreadPool is used as a submodule (e.g. in projects A, B, C, etc., which are then included in a larger project E), you can configure it without having to include its full unification file in every parent. For example, in your parent project’s `CMakeLists.txt`:
+
+```cmake
+# Set ThreadPool options (if needed)
+set(BUILD_THREADPOOL_SHARED_LIBS OFF CACHE BOOL "Build ThreadPool as a static library" FORCE)
+set(BUILD_THREADPOOL_SINGLETON ON CACHE BOOL "Enable ThreadPool singleton" FORCE)
+
+# Automatically record the parent's configuration request.
+# The caller’s name is taken from ${PROJECT_NAME}.
+set(GLOBAL_THREADPOOL_REQUEST_LIST "${PROJECT_NAME}:1,1500000"
+    CACHE INTERNAL "Global ThreadPool configuration requests" FORCE) #Example
+
+# Then add the ThreadPool subdirectory.
+add_subdirectory(extern/ThreadPool)
+```
+This global variable is then read by ThreadPool’s unification code so that all requests (from various parent projects) are combined into a single configuration.
+
+## Understanding the Unified Configuration
+ThreadPool uses an internal function `_threadpool_unify_requests()` to merge all configuration requests into a single final configuration. Each request is recorded in the format:
+```bash
+<Caller>:<mode>,<tick>
+```
+The unification process works as follows:
+
+- **Mode:**
+    If any request specifies mode `1` (`PRIORITY`), then the final mode is set to 1. Otherwise, it remains `0` (`STANDARD`).
+
+- **Tick:**
+        If any request specifies a tick value of `0` (non‑adaptive), the final tick is set to `0`.
+        Otherwise, the maximum tick value among all requests is chosen.
+
+When unification occurs, the function prints all requests along with the final unified configuration. For example:
+```bash
+=== ThreadPool Requests ===
+  Request: PROJECT_NAME:1,1500000
+===========================
+[PROJECT_NAME] Final Unified Configuration: Mode = PRIORITY, TICK = 1500000
+```
+### Singleton Behavior
+If `BUILD_THREADPOOL_SINGLETON` is enabled, the unified configuration is applied to a singleton instance of `ThreadPoolManager`. This means:
+
+- All submodules and parent projects share the same ThreadPool configuration.
+- The final unified mode and tick values control the behavior of the singleton.
+- This ensures consistent behavior across all projects that use ThreadPool.
 
 ## Usage
 After installing and linking the `ThreadPool` library to your project, you can utilize it within your application as follows:
