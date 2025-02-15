@@ -89,7 +89,7 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/ThreadPoolUnifyRequests.cmake)
 #------------------------------
 # Actually unify requests now
 _threadpool_unify_requests()
-# #------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------
 # Define the source and include directories
 set(THREADPOOL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 set(THREADPOOL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
