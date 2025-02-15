@@ -6,24 +6,25 @@
 | **ARM**      | ![Ubuntu ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu_arm.yml/badge.svg) | ![macOS ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/macos_arm.yml/badge.svg) | ![Windows ARM](https://github.com/mjshakir/ThreadPool/actions/workflows/windows_arm.yml/badge.svg) |
 | **RISCV**    | ![Ubuntu RISCV](https://github.com/mjshakir/ThreadPool/actions/workflows/ubuntu_riscv.yml/badge.svg) |        |         |
 
-ThreadPool is a high-performance C++ library designed for efficient parallel execution of tasks, utilizing a pool of managed threads. Under the hood, it leverages the power of `std::jthread` introduced in C++20, which automatically manages the life cycle of threads, saving developers from the intricacies of explicit thread management.
+ThreadPool is a high-performance C++ library designed for efficient parallel execution of tasks, utilizing a pool of managed threads. Under the hood, it leverages the power of `std::jthread` introduced in `C++20`, which automatically manages the life cycle of threads—saving developers from the intricacies of explicit thread management. **One standout feature is its optional singleton ThreadPoolManager, which unifies configuration requests across multiple submodules, ensuring a consistent thread pool configuration across your entire application.**
 
-This library stands out by offering flexibility in task scheduling through either a standard Deque or a custom-implemented PriorityQueue. This feature provides refined control over task execution order, allowing priority-based task handling. Whether you are dealing with simple parallel tasks or need advanced control over task execution order, ThreadPool can cater to those requirements with ease and efficiency.
+This library stands out by offering flexibility in task scheduling through either a standard Deque or a custom-implemented `PriorityQueue`. This feature provides refined control over task execution order, allowing priority-based task handling. Whether you are dealing with simple parallel tasks or need advanced control over task execution order, ThreadPool can cater to those requirements with ease and efficiency.
 
 ## Key Features
 
 - Modern C++ implementation utilizing `std::jthread` for automatic thread management and reduced overhead in resource handling.
 - Flexible task scheduling mechanisms including standard Deque or priority-based PriorityQueue, enabling refined control over task execution based on user-defined priorities.
+- **Optional Singleton ThreadPoolManager:** Unify configuration requests from multiple modules so that a single, globally accessible thread pool instance is used throughout your application.
 - Simplified integration with existing CMake projects, making it straightforward to include in your project.
 - Easy management of a pool of threads.
 - Task execution using either a `Deque` or a `PriorityQueue`.
 - Customizable task prioritization (when using the `PriorityQueue`).
-- Support for C++20.
-- Easy integration with CMake projects.
+- Support for `C++20`.
 - Options for both shared and static library build configurations to suit various application needs.
 
+
 ## Prerequisites
-- CMake 3.5 or higher
+- CMake 3.15 or higher
 - A compatible C++20 compiler
 
 ## How to Include ThreadPool in Your Project
