@@ -58,12 +58,14 @@ option(BUILD_THREADPOOL_TESTS "Build ThreadPool tests." ${THREADPOOL_STANDALONE_
 option(BUILD_THREADPOOL_BENCHMARK "Build ThreadPool benchmarks." ${THREADPOOL_STANDALONE_PROJECT})
 option(BUILD_THREADPOOL_DEFAULT_MODE "If ON => default to PRIORITY (1) ON, else STANDARD (0) OFF." OFF)
 #------------------------------
+set(BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK "1000000" CACHE STRING "Default fallback adoptive tick")
 if(BUILD_THREADPOOL_DEFAULT_MODE)
     set(THREADPOOL_DEFAULT_MODE "1" CACHE STRING "Default fallback mode if no submodule requests anything" FORCE)
+    set(GLOBAL_THREADPOOL_REQUEST_LIST "${PROJECT_NAME}:1,${BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK}" CACHE INTERNAL "Global ThreadPool configuration requests" FORCE)
 else()
     set(THREADPOOL_DEFAULT_MODE "0" CACHE STRING "Default fallback mode if no submodule requests anything" FORCE)
+    set(GLOBAL_THREADPOOL_REQUEST_LIST "${PROJECT_NAME}:0,${BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK}" CACHE INTERNAL "Global ThreadPool configuration requests" FORCE)
 endif()
-set(BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK "1000000" CACHE STRING "Default fallback adoptive tick")
 #------------------------------
 message(STATUS "THREADPOOL_STANDALONE_PROJECT: ${THREADPOOL_STANDALONE_PROJECT}")
 message(STATUS "BUILD_THREADPOOL_SHARED_LIBS: ${BUILD_THREADPOOL_SHARED_LIBS}")
