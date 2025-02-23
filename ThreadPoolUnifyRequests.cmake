@@ -101,9 +101,14 @@ function(_threadpool_unify_requests)
     
     foreach(req IN LISTS _REQUESTS)
         # Expect each request in the form: "Caller:mode,tick"
+        if(req STREQUAL "")
+            continue()
+        endif()
         string(FIND "${req}" ":" sep_pos)
         if(sep_pos EQUAL -1)
-            message(WARNING "Malformed request: ${req}")
+            if(NOT req STREQUAL "0")
+                message(WARNING "Malformed request: ${req}")
+            endif()
             continue()
         endif()
         # Compute offset = sep_pos + 1
