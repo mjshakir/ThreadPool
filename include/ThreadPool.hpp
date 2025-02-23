@@ -9,7 +9,10 @@
 #include <chrono>
 #include <concepts>
 #include <cmath>
+#include <cstdbool>
 #include <cstddef>
+#include <cstdint>
+#include <deque>
 #include <unordered_set>
 #include <unordered_map>
 #include <functional>
