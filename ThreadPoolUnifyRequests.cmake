@@ -74,13 +74,16 @@ endfunction()
 #   - Otherwise, the highest (maximum) tick value is used.
 #------------------------------
 function(_threadpool_unify_requests)
+    # Prevent re-unification if already done.
     if(_THREADPOOL_UNIFIED STREQUAL "ON")
         return()
     endif()
     
+    # If there are no requests, use the defaults.
     if(_THREADPOOL_REQUEST_LIST STREQUAL "")
-        set(_REQUESTS "Default:0,${BUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK}")
+        set(_REQUESTS "${THREADPOOL_DEFAULT_MODE};${THREADPOOL_DEFAULT_ADOPTIVE_TICK}")
     else()
+        # Here we assume that each request is already separated by a semicolon.
         set(_REQUESTS "${_THREADPOOL_REQUEST_LIST}")
     endif()
     
@@ -93,8 +96,7 @@ function(_threadpool_unify_requests)
     message(STATUS "===========================")
     
     # Initialize unified values.
-    set(_unified_mode "0")
-    # We use a flag to indicate whether we've seen any nonzero tick.
+    set(_unified_mode "0")  # Default STANDARD
     set(_unified_tick "None")
     
     foreach(req IN LISTS _REQUESTS)
@@ -104,45 +106,55 @@ function(_threadpool_unify_requests)
             message(WARNING "Malformed request: ${req}")
             continue()
         endif()
+        # Compute offset = sep_pos + 1
+        math(EXPR offset "${sep_pos} + 1")
         string(LENGTH "${req}" req_length)
-        math(EXPR num_length "${req_length} - ${sep_pos} - 1")
-        string(SUBSTRING "${req}" ${sep_pos}+1 ${num_length} numeric_part)
+        math(EXPR num_length "${req_length} - ${offset}")
+        string(SUBSTRING "${req}" ${offset} ${num_length} numeric_part)
         string(REPLACE "," ";" parts "${numeric_part}")
         list(GET parts 0 mode_str)
         list(GET parts 1 tick_str)
         
-        # Mode: if any request's mode is "1", then final mode becomes "1".
+        # Debug print:
+        message(STATUS "[ThreadPool] Parsed request: Mode=${mode_str}, Tick=${tick_str}")
+        
+        # (A) Mode: if any request's mode is "1", then final mode becomes "1".
         if(mode_str STREQUAL "1")
             set(_unified_mode "1")
         endif()
         
-        # Process tick_str:
+        # (B) Process tick_str:
+        # If tick_str is exactly "0", then that's a non-adaptive setting.
+        if(tick_str STREQUAL "0")
+            set(sanitized_val 0)
+            set(_unified_tick 0)
+            continue()
+        endif()
+        
         string(REGEX REPLACE "[^0-9\\-\\+\\.]" "" tick_clean "${tick_str}")
-        set(sanitized_val 0)
+        set(sanitized_val "0")
         if(tick_clean MATCHES "^[+-]?[0-9]+(\\.[0-9]+)?$")
             math(EXPR parsed_float "0 + ${tick_clean}")
             set(floor_val "${parsed_float}")
             if(floor_val MATCHES "^-?[0-9]+\\.[0-9]+$")
                 string(REGEX REPLACE "\\.[0-9]+$" "" floor_val "${floor_val}")
             endif()
-            # If the tick value is zero, that means non-adaptive.
-            if(floor_val EQUAL 0)
-                # Zero takes precedence over any nonzero value.
-                set(sanitized_val 0)
-                set(_unified_tick 0)
-                # Optionally, you could break out of the loop here.
-                continue()
+            if(floor_val LESS 0)
+                math(EXPR final_val "-1 * ${floor_val}")
             else()
-                set(sanitized_val "${floor_val}")
+                set(final_val "${floor_val}")
             endif()
+            set(sanitized_val "${final_val}")
         else()
-            message(WARNING "[ThreadPool] Request tick '${tick_str}' is not numeric; using 0")
+            # If tick_str is empty or non-numeric (and not "0"), simply use 0 without warning.
+            if(NOT tick_str STREQUAL "")
+                message(WARNING "[ThreadPool] Request tick '${tick_str}' not numeric; using 0")
+            endif()
         endif()
         
         if(_unified_tick STREQUAL "None")
             set(_unified_tick "${sanitized_val}")
         else()
-            # If _unified_tick is already 0 (non-adaptive), leave it.
             if(NOT _unified_tick EQUAL 0)
                 math(EXPR current_tick "${_unified_tick}")
                 if(sanitized_val GREATER current_tick)
@@ -152,12 +164,12 @@ function(_threadpool_unify_requests)
         endif()
     endforeach()
     
-    # If no nonzero tick was ever set, default to 0.
     if(_unified_tick STREQUAL "None")
         set(_unified_tick 0)
     endif()
     
-    set(THREADPOOL_MODE ${_unified_mode} CACHE INTERNAL "Unified final mode" FORCE)
+    # Save final picks.
+    set(THREADPOOL_MODE ${_unified_mode} CACHE INTERNAL "Unified final mode bool" FORCE)
     set(THREADPOOL_ADOPTIVE_TICK ${_unified_tick} CACHE INTERNAL "Unified final tick" FORCE)
     
     if(_unified_mode STREQUAL "1")
