@@ -3,7 +3,8 @@
 //--------------------------------------------------------------
 // Standard library
 //--------------------------------------------------------------
-#include <iostream>
+#include <cstdbool>
+#include <string_view>
 //--------------------------------------------------------------
 /** @namespace ThreadPool
  * @brief A namespace containing the ThreadPool class.
@@ -30,6 +31,49 @@ namespace ThreadPool {
         STANDARD = false,
         PRIORITY = true
     }; // end enum class ThreadMode
+    //--------------------------------------------------------------
+    /**
+     * @brief Converts the ThreadMode enum to a string representation.
+     *
+     * @details This function converts the ThreadMode enum to a string representation for easy debugging and logging.
+     *
+     * @param mode The ThreadMode enum value to convert.
+     * 
+     * @return std::string_view A string representation of the ThreadMode enum value.
+     * 
+     * @example
+     * 
+     * @code
+     * 
+     * #include <iostream>
+     * #include "ThreadMode.hpp"
+     * 
+     * void main() {
+     *     constexpr ThreadPool::ThreadMode mode = ThreadPool::ThreadMode::PRIORITY;
+     *     constexpr std::string_view mode_str = ThreadPool::ThreadMode_name(mode);
+     *     
+     *     std::cout << "Thread mode: " << mode_str << std::endl; // Outputs: "PRIORITY"
+     *     return 0;
+     * }
+     * 
+     * @endcode
+     */
+    constexpr std::string_view ThreadMode_name(const ThreadMode& mode) {
+        //--------------------------------------------------------------
+        switch (mode) {
+            //--------------------------
+            case ThreadMode::STANDARD:
+                return "STANDARD";
+            //--------------------------
+            case ThreadMode::PRIORITY:
+                return "PRIORITY";
+            //--------------------------
+            default:
+                return "UNKNOWN";
+            //--------------------------
+        }// end switch (mode)
+        //--------------------------------------------------------------
+    }// end constexpr std::string_view to_string(ThreadMode mode)
     //--------------------------------------------------------------
 } // end namespace ThreadPool
 //--------------------------------------------------------------

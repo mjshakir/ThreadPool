@@ -3,15 +3,18 @@
 //--------------------------------------------------------------
 // Standard library
 //--------------------------------------------------------------
-#include <iostream>
 #include <thread>
 #include <condition_variable>
 #include <future>
 #include <chrono>
 #include <concepts>
+#include <cmath>
+#include <cstdbool>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
 #include <unordered_set>
 #include <unordered_map>
-#include <cmath>
 #include <functional>
 #include <optional>
 #include <mutex>
@@ -19,8 +22,8 @@
 // User Defined library
 //--------------------------------------------------------------
 #include "ThreadMode.hpp"
-#include "PriorityQueue.hpp"
 #include "ThreadTask.hpp"
+#include "PriorityQueue.hpp"
 //--------------------------------------------------------------
 /** @namespace ThreadPool
  * @brief A namespace containing the ThreadPool class.
@@ -543,6 +546,119 @@ namespace ThreadPool {
                 return active_tasks_size();
                 //--------------------------
             }// end size_t ThreadPool::ThreadPool::queued_size() const
+            //--------------------------
+            /**
+             * @brief Retrieves the current mode the ThreadPool is running in.
+             * 
+             * @details The `mode` function returns the current mode of operation for the ThreadPool.
+             * The mode can be either `STANDARD` or `PRIORITY`, depending on whether the ThreadPool
+             * is using a priority queue or a deque to manage tasks.
+             * 
+             * @return ThreadMode The current mode of operation for the ThreadPool.
+             * 
+             * @example
+             * 
+             * @code
+             * 
+             * # include <iostream>
+             * #include "ThreadPool.hpp"
+             * 
+             * int main() {
+             *    ThreadPool::ThreadPool pool(4);
+             * 
+             *  // Retrieve the current mode of the ThreadPool
+             * ThreadMode mode = pool.mode();
+             * 
+             * if (mode == ThreadMode::STANDARD) {
+             *    std::cout << "ThreadPool is running in STANDARD mode." << std::endl;
+             * } else {
+             *  std::cout << "ThreadPool is running in PRIORITY mode." << std::endl;
+             * }
+             * 
+             * return 0;
+             * }
+             * 
+             * @endcode
+             */
+            constexpr ThreadMode mode(void) const {
+                //--------------------------
+                return use_priority_queue;
+                //--------------------------
+            }// end ThreadMode mode(void) const
+            //--------------------------
+            /**
+             * @brief Determines if the ThreadPool is currently running adoptive thread management.
+             * 
+             * @details Adoptive thread management is a feature of the ThreadPool that allows it to
+             * automatically destroy idle worker threads after a certain period of inactivity. This
+             * method returns true if the ThreadPool is currently running adoptive thread management,
+             * and false otherwise.
+             * 
+             * @return bool True if the ThreadPool is currently running, false otherwise.
+             * 
+             * @example
+             * 
+             * @code
+             * 
+             * #include <iostream>
+             * #include "ThreadPool.hpp"
+             * 
+             * int main() {
+             *    ThreadPool::ThreadPool pool(4);
+             *  
+             *   // Check if the ThreadPool is running adoptive thread management
+             *  if (pool.adoptive()) {
+             *     std::cout << "ThreadPool is running adoptive thread management." << std::endl;
+             * } else {
+             *   std::cout << "ThreadPool is not running adoptive thread management." << std::endl;
+             * }
+             * 
+             * return 0;
+             * }
+             * 
+             * @endcode
+             */
+            constexpr bool adoptive(void) const {
+                //--------------------------
+                return 0 < adoptive_tick;
+                //--------------------------
+            }// end constexpr bool adoptive(void) const
+            //--------------------------
+            /**
+             * @brief Retrieves the time interval after which idle threads should be destroyed in the ThreadPool.
+             * 
+             * @details The `adoptive_tick` function returns the time interval (in nanoseconds) after which
+             * idle worker threads should be destroyed by the ThreadPool. If the `adoptive_tick` value is 0,
+             * the ThreadPool will not destroy idle threads. This function allows users to query the current
+             * adoptive tick value set for the ThreadPool.
+             * 
+             * @return size_t The time interval (in nanoseconds) after which idle threads should be destroyed.
+             * 
+             * @example
+             * 
+             * @code
+             * 
+             * #include <iostream>
+             * #include "ThreadPool.hpp"
+             * 
+             * int main() {
+             *   ThreadPool::ThreadPool pool(4);
+             * 
+             *  // Retrieve the adoptive tick value
+             * size_t tick = pool.adoptive_tick();
+             * 
+             * std::cout << "Adoptive tick value: " << tick << std::endl;
+             * 
+             * return 0;
+             * }
+             * 
+             * @endcode
+             */
+            constexpr size_t adoptive_tick_size(void) const {
+                //--------------------------
+                return adoptive_tick;
+                //--------------------------
+            }// end constexpr size_t adoptive_tick_size(void) const
             //--------------------------
             /**
              * @brief Enqueues a task with priority and retry settings by returning a TaskBuilder object.
