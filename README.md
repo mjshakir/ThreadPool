@@ -140,27 +140,43 @@ These options control the ThreadPool behavior when built on its own
 
 - **Example:**
 ```bash
-cmake -DFORCE_COLORED_OUTPUT=ON -DBUILD_THREADPOOL_SINGLETON=ON -DBUILD_THREADPOOL_DEFAULT_MODE=0 -DBUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK=1500000 -DCMAKE_BUILD_TYPE=Release -B build -G Ninja;
+cmake -DFORCE_COLORED_OUTPUT=ON -DBUILD_THREADPOOL_SINGLETON=ON -DBUILD_THREADPOOL_DEFAULT_MODE=0 -DBUILD_THREADPOOL_DEFAULT_ADOPTIVE_TICK=1500000 -DCMAKE_BUILD_TYPE=Release -B build -G Ninja
 ```
 
 ### Integrating ThreadPool as a Submodule
 
-When ThreadPool is used as a submodule (e.g. in projects A, B, C, etc., which are then included in a larger project E), you can configure it without having to include its full unification file in every parent. For example, in your parent project’s `CMakeLists.txt`:
+When using `ThreadPool` as a submodule (for example, when projects `A`, `B`, `C`, etc. are included in a larger project `E`), you need to ensure that all configuration requests from the parent and subprojects are combined into one global configuration. This is done via a global variable called `GLOBAL_THREADPOOL_REQUEST_LIST` that the `ThreadPool` unification code reads.
 
+#### Important:
+If you simply use a `set(... FORCE)` command each time, the new value will overwrite the previous one. Instead, you should append new requests to the global list so that all requests are taken into account.
+
+For someone not very familiar with CMake, here is a step-by-step example you can copy and paste into your parent project's `CMakeLists.txt`:
 ```cmake
-# Set ThreadPool options (if needed)
+# Set ThreadPool options (adjust as needed for your project)
 set(BUILD_THREADPOOL_SHARED_LIBS OFF CACHE BOOL "Build ThreadPool as a static library" FORCE)
 set(BUILD_THREADPOOL_SINGLETON ON CACHE BOOL "Enable ThreadPool singleton" FORCE)
 
-# Automatically record the parent's configuration request.
-# The caller’s name is taken from ${PROJECT_NAME}.
-set(GLOBAL_THREADPOOL_REQUEST_LIST "${PROJECT_NAME}:1,1500000"
-    CACHE INTERNAL "Global ThreadPool configuration requests" FORCE) #Example
+# Append the parent's configuration request to the global list.
+# This code checks if GLOBAL_THREADPOOL_REQUEST_LIST already has a value.
+if(DEFINED GLOBAL_THREADPOOL_REQUEST_LIST AND NOT GLOBAL_THREADPOOL_REQUEST_LIST STREQUAL "")
+    set(GLOBAL_THREADPOOL_REQUEST_LIST "${GLOBAL_THREADPOOL_REQUEST_LIST};${PROJECT_NAME}:1,1500000"
+        CACHE INTERNAL "Global ThreadPool configuration requests" FORCE)
+else()
+    set(GLOBAL_THREADPOOL_REQUEST_LIST "${PROJECT_NAME}:1,1500000"
+        CACHE INTERNAL "Global ThreadPool configuration requests" FORCE)
+endif()
 
 # Then add the ThreadPool subdirectory.
 add_subdirectory(extern/ThreadPool)
 ```
-This global variable is then read by ThreadPool’s unification code so that all requests (from various parent projects) are combined into a single configuration.
+#### Explanation:
+- The snippet first sets some options for `ThreadPool`.
+- It then checks if `GLOBAL_THREADPOOL_REQUEST_LIST` already exists and is non-empty.
+
+   - If it exists, the new request (formatted as `${PROJECT_NAME}:1,1500000`) is appended using a semicolon (`;`) as a separator.
+   - If it doesn't exist, the global variable is set with just the new request.
+
+- Finally, it calls `add_subdirectory(extern/ThreadPool)` so that the `ThreadPool` CMake code can read and process the accumulated requests.
 
 ## Understanding the Unified Configuration
 ThreadPool uses an internal function `_threadpool_unify_requests()` to merge all configuration requests into a single final configuration. Each request is recorded in the format:
