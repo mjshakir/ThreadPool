@@ -79,7 +79,17 @@ namespace ThreadPool {
      * @enum ThreadSynchronization
      * @brief Enum class to specify synchronization preference for void tasks.
      *
-     * ASYNCHRONOUS keeps void tasks fire-and-forget, while SYNCHRONOUS exposes a future so callers can wait.
+     * @details Use this to choose whether void-returning tasks should expose a future to callers. 
+     * `ASYNCHRONOUS` keeps void tasks fire-and-forget, while `SYNCHRONOUS` exposes a future so callers can wait.
+     *
+     * @code
+     * // Fire-and-forget void task
+     * pool.queue<ThreadPool::ThreadSynchronization::ASYNCHRONOUS>([] { work });
+     *
+     * // Void task that can be waited on
+     * auto fut = pool.queue<ThreadPool::ThreadSynchronization::SYNCHRONOUS>([] { work });
+     * fut.wait();
+     * @endcode
      */
     enum class ThreadSynchronization : bool {
         ASYNCHRONOUS = false,
@@ -89,9 +99,17 @@ namespace ThreadPool {
     /**
      * @brief Converts the ThreadSynchronization enum to a string representation.
      *
+     * @details This helper is useful for logging and debugging synchronization choices at runtime.
      * @param mode The ThreadSynchronization enum value to convert.
      *
      * @return std::string_view A string representation of the ThreadSynchronization enum value.
+     *
+     * @example
+     * @code
+     * constexpr auto sync_mode = ThreadPool::ThreadSynchronization::SYNCHRONOUS;
+     * constexpr auto name = ThreadPool::ThreadSynchronization_name(sync_mode);
+     * // name == "SYNCHRONOUS"
+     * @endcode
      */
     constexpr std::string_view ThreadSynchronization_name(const ThreadSynchronization& mode) {
         switch (mode) {
