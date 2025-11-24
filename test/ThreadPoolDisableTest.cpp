@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <future>
+#include <atomic>
 #include <vector>
 #include "ThreadPool.hpp"
 

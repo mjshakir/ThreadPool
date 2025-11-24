@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <chrono>
 #include <future>
+#include <atomic>
 #include <vector>
 #include "ThreadPool.hpp"
 
@@ -166,6 +167,17 @@ TEST_F(ThreadPoolTest, HandleVaryingExecutionTimes) {
             FAIL() << "Invalid future at index " << i;
         }
     }
+}
+
+TEST_F(ThreadPoolTest, VoidTaskSynchronizesWhenRequested) {
+    std::atomic_int counter{0};
+
+    auto future = threadPool->queue<ThreadPool::ThreadSynchronization::SYNCHRONOUS>([&counter] { counter++; });
+
+    ASSERT_TRUE(future.valid());
+    future.wait();
+
+    EXPECT_EQ(counter.load(), 1);
 }
 
 TEST_F(ThreadPoolTest, AllThreadsRunningWithoutGet) {
