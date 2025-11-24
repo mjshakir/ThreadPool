@@ -75,5 +75,34 @@ namespace ThreadPool {
         //--------------------------------------------------------------
     }// end constexpr std::string_view to_string(ThreadMode mode)
     //--------------------------------------------------------------
+    /**
+     * @enum ThreadSynchronization
+     * @brief Enum class to specify synchronization preference for void tasks.
+     *
+     * ASYNCHRONOUS keeps void tasks fire-and-forget, while SYNCHRONOUS exposes a future so callers can wait.
+     */
+    enum class ThreadSynchronization : bool {
+        ASYNCHRONOUS = false,
+        SYNCHRONOUS  = true
+    }; // end enum class ThreadSynchronization
+    //--------------------------------------------------------------
+    /**
+     * @brief Converts the ThreadSynchronization enum to a string representation.
+     *
+     * @param mode The ThreadSynchronization enum value to convert.
+     *
+     * @return std::string_view A string representation of the ThreadSynchronization enum value.
+     */
+    constexpr std::string_view ThreadSynchronization_name(const ThreadSynchronization& mode) {
+        switch (mode) {
+            case ThreadSynchronization::ASYNCHRONOUS:
+                return "ASYNCHRONOUS";
+            case ThreadSynchronization::SYNCHRONOUS:
+                return "SYNCHRONOUS";
+            default:
+                return "UNKNOWN";
+        }
+    }// end constexpr std::string_view ThreadSynchronization_name(const ThreadSynchronization& mode)
+    //--------------------------------------------------------------
 } // end namespace ThreadPool
 //--------------------------------------------------------------
