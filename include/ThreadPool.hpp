@@ -69,9 +69,7 @@ namespace ThreadPool {
              * auto result = task.get();  // Will retrieve the result after task execution.
              * @endcode
              */
-            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS,
-                        typename F,
-                        typename... Args> requires (static_cast<bool>(use_priority_queue))
+            template <ThreadSynchronization sync_mode, typename F, typename... Args> requires (static_cast<bool>(use_priority_queue))
             class TaskBuilder {
                 //--------------------------------------------------------------
                 // static_assert(!use_priority_queue, "TaskBuilder can only be used with priority queues disable.");
@@ -871,7 +869,7 @@ namespace ThreadPool {
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken){
+            void worker_function(const std::stop_token& stoken) {
                 //--------------------------
                 std::optional<std::thread::id> id{std::nullopt};
                 //--------------------------
