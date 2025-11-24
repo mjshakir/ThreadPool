@@ -101,6 +101,26 @@ int main(void) {
         }
     }
     {
+        // Demonstrate synchronous void task submission with a waitable future.
+        ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> _threads(_size);
+        std::atomic<int> counter{0};
+
+        std::vector<std::future<void>> futures;
+        futures.reserve(_size);
+        for (size_t i = 0; i < _size; ++i) {
+            auto fut = _threads.queue<ThreadPool::ThreadSynchronization::SYNCHRONOUS>([&counter]() {
+                counter.fetch_add(1, std::memory_order_relaxed);
+            });
+            futures.emplace_back(std::move(fut));
+        }
+
+        for (auto& fut : futures) {
+            fut.wait();
+        }
+
+        std::cout << "Synchronous void tasks completed. Count:" << counter.load() << std::endl;
+    }
+    {
         ThreadPool::ThreadPool<ThreadPool::ThreadMode::PRIORITY> _threads(_size);
         std::vector<std::future<int>> results;
         results.reserve(_size);
