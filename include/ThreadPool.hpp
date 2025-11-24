@@ -69,16 +69,14 @@ namespace ThreadPool {
              * auto result = task.get();  // Will retrieve the result after task execution.
              * @endcode
              */
-            template <typename F, typename... Args> requires (static_cast<bool>(use_priority_queue))
+            template <ThreadSynchronization sync_mode, typename F, typename... Args> requires (static_cast<bool>(use_priority_queue))
             class TaskBuilder {
                 //--------------------------------------------------------------
                 // static_assert(!use_priority_queue, "TaskBuilder can only be used with priority queues disable.");
                 //--------------------------------------------------------------
                 private:
-                    using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
-                    //--------------------------
-                    // Dummy struct for void-returning functions
-                    struct VoidType {};
+                    using ReturnType     = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
+                    using TaskReturnType = std::conditional_t<std::is_void_v<ReturnType>, void, ReturnType>;
                     //--------------------------------------------------------------
                 public:
                     //--------------------------------------------------------------
@@ -121,9 +119,9 @@ namespace ThreadPool {
                             m_submitted(false),
                             m_task(create_task(std::forward<F>(f), std::forward<Args>(args)...)) {
                         //--------------------------
-                        if constexpr (!std::is_void_v<ReturnType>) {
+                        if constexpr (!std::is_void_v<TaskReturnType> or sync_mode == ThreadSynchronization::SYNCHRONOUS) {
                             m_future.emplace(m_task.get_future());
-                        }// end if constexpr (!std::is_void_v<ReturnType>)
+                        }// end if constexpr (!std::is_void_v<TaskReturnType> or sync_mode == ThreadSynchronization::SYNCHRONOUS)
                         //--------------------------
                         if (auto_submit) {
                             submit();
@@ -243,45 +241,19 @@ namespace ThreadPool {
                     }// end void submit(void) 
                     //--------------------------
                     /**
-                     * @brief This version of the `get_future` method is explicitly deleted for tasks with a void return type.
-                     * 
-                     * @details Tasks with a void return type do not have an associated future because there's no result to retrieve.
-                     * Attempting to call this method for such tasks will result in a compilation error.
-                     * 
-                     * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
-                     * 
-                     * @throws This method is deleted and will cause a compilation error if called.
-                     */
-                    template <typename T = ReturnType>
-                    std::enable_if_t<std::is_void_v<T>, void> get_future(void) = delete;
-                    //--------------------------
-                    /**
                      * @brief Retrieves the future associated with this task, allowing the caller to get the result once it's available.
                      * 
-                     * @details This method provides access to the future associated with the task encapsulated by this TaskBuilder. This future 
-                     * can be used to retrieve the result of the task once it has been executed by a thread in the ThreadPool.
+                     * @details For non-void tasks this always exposes the underlying future. For void tasks, the future is only
+                     * available when the TaskBuilder was instantiated with ThreadSynchronization::SYNCHRONOUS.
                      *
-                     * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
+                     * @tparam T Type of the return value of the task. Defaults to the TaskReturnType of the task function.
                      * 
                      * @return A future associated with the result of the task. The future can be used to retrieve the result.
                      *
                      * @throws std::future_error with an error code of `std::future_errc::no_state` if the future is not available, 
-                     *         typically because the task has a void return type or the future has already been retrieved.
-                     * 
-                     * @example
-                     * ```cpp
-                     * ThreadPool::ThreadPool pool;
-                     * 
-                     * // Create and auto-submit a task.
-                     * auto taskBuilder = pool.queue(true, [](int x) { return x*x; }, 5);
-                     * 
-                     * // Retrieve the future and get the result.
-                     * std::future<int> resultFuture = taskBuilder.get_future();
-                     * int result = resultFuture.get();
-                     * std::cout << "Result: " << result << std::endl; // Prints "Result: 25"
-                     * ```
+                     *         typically because the task has a void return type configured as ASYNCHRONOUS or the future has already been retrieved.
                      */
-                    template <typename T = ReturnType>
+                    template <typename T = TaskReturnType>
                     std::enable_if_t<!std::is_void_v<T>, std::future<T>> get_future(void) {
                         if(m_future) {
                             return std::move(*m_future);
@@ -291,18 +263,18 @@ namespace ThreadPool {
                         //--------------------------
                     }// end std::enable_if_t<!std::is_void_v<T>, std::future<T>> get_future(void)
                     //--------------------------
-                    /**
-                     * @brief This version of the `get` method is explicitly deleted for tasks with a void return type.
-                     * 
-                     * @details Tasks with a void return type do not produce a result. Thus, calling `get` for such tasks is not meaningful.
-                     * Attempting to call this method for tasks with a void return type will result in a compilation error.
-                     * 
-                     * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
-                     * 
-                     * @throws This method is deleted and will cause a compilation error if called.
-                     */
-                    template <typename T = ReturnType>
-                    std::enable_if_t<std::is_void_v<T>> get(void) = delete;
+                    template <typename T = TaskReturnType, ThreadSynchronization S = sync_mode>
+                    std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::SYNCHRONOUS, std::future<void>> get_future(void) {
+                        if(m_future) {
+                            return std::move(*m_future);
+                        } // end if(m_future)
+                        //--------------------------
+                        throw std::future_error(std::future_errc::no_state);
+                        //--------------------------
+                    }// end std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::SYNCHRONOUS, std::future<void>> get_future(void)
+                    //--------------------------
+                    template <typename T = TaskReturnType, ThreadSynchronization S = sync_mode>
+                    std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::ASYNCHRONOUS, void> get_future(void) = delete;
                     //--------------------------
                     /**
                      * @brief Retrieves the result of the task once it has been computed by the ThreadPool.
@@ -313,7 +285,7 @@ namespace ThreadPool {
                      * 
                      * Note: Once the result has been retrieved using this method, it cannot be obtained again using the same TaskBuilder.
                      *
-                     * @tparam T Type of the return value of the task. Defaults to the ReturnType of the task function.
+                     * @tparam T Type of the return value of the task. Defaults to the TaskReturnType of the task function.
                      * 
                      * @return The computed result of the task.
                      * 
@@ -332,12 +304,24 @@ namespace ThreadPool {
                      * std::cout << "Result: " << result << std::endl; // Prints "Result: 25"
                      * ```
                      */
-                    template <typename T = ReturnType>
+                    template <typename T = TaskReturnType>
                     std::enable_if_t<!std::is_void_v<T>, T> get(void) {
                         auto res = m_future->get();
                         m_future.reset();  // Prevent future gets
                         return res;
                     }// end std::enable_if_t<!std::is_void_v<T>, T> get(void)
+                    //--------------------------
+                    template <typename T = TaskReturnType, ThreadSynchronization S = sync_mode>
+                    std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::SYNCHRONOUS, void> get(void) {
+                        if(!m_future){
+                            throw std::future_error(std::future_errc::no_state);
+                        }// end if(!m_future)
+                        m_future->get();
+                        m_future.reset();
+                    }// end std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::SYNCHRONOUS, void> get(void)
+                    //--------------------------
+                    template <typename T = TaskReturnType, ThreadSynchronization S = sync_mode>
+                    std::enable_if_t<std::is_void_v<T> and S == ThreadSynchronization::ASYNCHRONOUS, void> get(void) = delete;
                     //--------------------------------------------------------------
                 protected:
                     //--------------------------------------------------------------
@@ -375,24 +359,19 @@ namespace ThreadPool {
                     template <typename Func, typename... CArgs>
                     auto create_task(Func&& func, CArgs&&... capturedArgs) {
                         //--------------------------
-                        if constexpr (!std::is_void_v<ReturnType>) {
-                            //--------------------------
-                            return std::packaged_task<ReturnType()>(
+                        if constexpr (!std::is_void_v<TaskReturnType>) {
+                            return std::packaged_task<TaskReturnType()>(
                                 [f = std::forward<Func>(func), ...args = std::forward<CArgs>(capturedArgs)]() mutable {
                                     return std::invoke(f, std::forward<CArgs>(args)...);
                                 }
                             );
-                            //--------------------------
                         } else {
-                            //--------------------------
-                            return std::packaged_task<VoidType()>(
+                            return std::packaged_task<TaskReturnType()>(
                                 [f = std::forward<Func>(func), ...args = std::forward<CArgs>(capturedArgs)]() mutable {
                                     std::invoke(f, std::forward<CArgs>(args)...);
-                                    return VoidType{};
                                 }
                             );
-                            //--------------------------
-                        }// end else if constexpr (!std::is_void_v<ReturnType>)
+                        }// end else if constexpr (!std::is_void_v<TaskReturnType>)
                     }// end auto create_task(Func&& func, CArgs&&... capturedArgs)
                     //--------------------------------------------------------------
                 private:
@@ -401,8 +380,8 @@ namespace ThreadPool {
                     uint16_t m_priority;
                     uint8_t m_retries;
                     bool m_submitted;
-                    std::packaged_task<std::conditional_t<std::is_void_v<ReturnType>, VoidType, ReturnType>()> m_task;
-                    std::optional<std::future<ReturnType>> m_future;
+                    std::packaged_task<TaskReturnType()> m_task;
+                    std::optional<std::future<TaskReturnType>> m_future;
                 //--------------------------------------------------------------
             };// end class TaskBuilder
             //--------------------------------------------------------------
@@ -672,6 +651,7 @@ namespace ThreadPool {
              *
              * @param auto_submit Automatically submits the task for execution if set to true.
              * 
+             * @tparam sync_mode Controls whether void-returning tasks expose a future (ThreadSynchronization::SYNCHRONOUS) or remain fire-and-forget.
              * @tparam F Type of the callable to be executed.
              * @tparam Args Variadic template for the arguments list of the callable.
              * 
@@ -690,10 +670,10 @@ namespace ThreadPool {
              * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
              * @endcode
              */
-            template <class F, class... Args>
-            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(bool auto_submit, F&& f, Args&&... args) {
+            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS, class F, class... Args>
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<sync_mode, F, Args...>> queue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
-                return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
+                return TaskBuilder<sync_mode, F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder queue(F&& f, Args&&... args)// end TaskBuilder queue(F&& f, Args&&... args)
             //--------------------------
@@ -706,6 +686,7 @@ namespace ThreadPool {
              * 
              * @note The task is submitted automatically to the thread pool and the TaskBuilder's `submit` method is called automatically
              * 
+             * @tparam sync_mode Controls whether void-returning tasks expose a future (ThreadSynchronization::SYNCHRONOUS) or remain fire-and-forget.
              * @tparam F Type of the callable to be
              * @tparam Args Variadic template for the arguments list of the callable.
              * 
@@ -724,10 +705,10 @@ namespace ThreadPool {
              * auto result = task.get(); // Will wait for the task to complete and retrieve the result.
              * @endcode
              */
-            template <class F, class... Args>
-            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> queue(F&& f, Args&&... args) {
+            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS, class F, class... Args>
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<sync_mode, F, Args...>> queue(F&& f, Args&&... args) {
                 //--------------------------
-                return TaskBuilder<F, Args...>(*this, true, std::forward<F>(f), std::forward<Args>(args)...);
+                return TaskBuilder<sync_mode, F, Args...>(*this, true, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder queue(F&& f, Args&&... args)// end TaskBuilder queue(F&& f, Args&&... args)
             //--------------------------
@@ -770,6 +751,9 @@ namespace ThreadPool {
              * task for execution in the thread pool. Unlike its counterpart which handles non-void callables,
              * this function does not return any future, as there is no return value from the callable.
              *
+             * Passing ThreadSynchronization::SYNCHRONOUS exposes a std::future<void> so callers can wait for completion.
+             *
+             * @tparam sync_mode Controls whether void-returning tasks expose a future (ThreadSynchronization::SYNCHRONOUS) or remain fire-and-forget.
              * @tparam F Type of the callable to be executed.
              * @tparam Args Variadic template for the arguments list of the callable.
              * 
@@ -780,19 +764,24 @@ namespace ThreadPool {
              * // The task is enqueued and will output to the console when executed.
              * @endcode
              */
-            template <class F, class... Args>
-            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, void> queue(F&& f, Args&&... args){
+            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS, class F, class... Args>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, std::conditional_t<sync_mode == ThreadSynchronization::SYNCHRONOUS, std::future<void>, void>>
+            queue(F&& f, Args&&... args){
                 //--------------------------
-                enqueue(std::forward<F>(f), std::forward<Args>(args)...);
+                if constexpr (sync_mode == ThreadSynchronization::SYNCHRONOUS) {
+                    return enqueue<sync_mode>(std::forward<F>(f), std::forward<Args>(args)...);
+                } else {
+                    enqueue<sync_mode>(std::forward<F>(f), std::forward<Args>(args)...);
+                }
                 //--------------------------
             }// end TaskBuilder queue(F&& f, Args&&... args)
             //--------------------------------------------------------------
         protected:
             //--------------------------------------------------------------
-            template <class F, class... Args>
-            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
+            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS, class F, class... Args>
+            std::enable_if_t<static_cast<bool>(use_priority_queue), TaskBuilder<sync_mode, F, Args...>> enqueue(bool auto_submit, F&& f, Args&&... args) {
                 //--------------------------
-                return TaskBuilder<F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
+                return TaskBuilder<sync_mode, F, Args...>(*this, auto_submit, std::forward<F>(f), std::forward<Args>(args)...);
                 //--------------------------
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
@@ -821,8 +810,8 @@ namespace ThreadPool {
                 //--------------------------
             }// end TaskBuilder enqueue(F&& f, Args&&... args)            
             //--------------------------------------------------------------
-            template <class F, class... Args>
-            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, void>
+            template <ThreadSynchronization sync_mode = ThreadSynchronization::ASYNCHRONOUS, class F, class... Args>
+            std::enable_if_t<!static_cast<bool>(use_priority_queue) and std::is_void_v<std::invoke_result_t<F, Args...>>, std::conditional_t<sync_mode == ThreadSynchronization::SYNCHRONOUS, std::future<void>, void>>
             enqueue(F&& f, Args&&... args) {
                 //--------------------------
                 using ReturnType = std::invoke_result_t<std::decay_t<F>, std::decay_t<Args>...>;
@@ -833,12 +822,24 @@ namespace ThreadPool {
                 //--------------------------
                 auto packagedTaskPtr = std::make_shared<std::packaged_task<ReturnType()>>(std::move(taskFn));
                 //--------------------------
-                {// adding task
-                    std::lock_guard lock(m_mutex);
-                    m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
-                }// end adding task
-                //--------------------------
-                m_task_available_condition.notify_one();
+                if constexpr (sync_mode == ThreadSynchronization::SYNCHRONOUS) {
+                    std::future<ReturnType> future = packagedTaskPtr->get_future();
+                    {// adding task
+                        std::lock_guard lock(m_mutex);
+                        m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
+                    }// end adding task
+                    //--------------------------
+                    m_task_available_condition.notify_one();
+                    //--------------------------
+                    return future;
+                } else {
+                    {// adding task
+                        std::lock_guard lock(m_mutex);
+                        m_tasks.emplace_back([pt = packagedTaskPtr]() { (*pt)(); });
+                    }// end adding task
+                    //--------------------------
+                    m_task_available_condition.notify_one();
+                }// end if constexpr (sync_mode == ThreadSynchronization::SYNCHRONOUS)
                 //--------------------------
             }// end enqueue(F&& f, Args&&... args)
             //--------------------------------------------------------------
@@ -868,7 +869,7 @@ namespace ThreadPool {
                 //--------------------------
             }//end void ThreadPool::ThreadPool::create_task(const size_t& number_threads)
             //--------------------------
-            void worker_function(const std::stop_token& stoken){
+            void worker_function(const std::stop_token& stoken) {
                 //--------------------------
                 std::optional<std::thread::id> id{std::nullopt};
                 //--------------------------

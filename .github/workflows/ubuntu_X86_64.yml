@@ -13,13 +13,13 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Install dependencies
       run: sudo apt-get update && sudo apt-get install -y libgtest-dev libbenchmark-dev cmake 
 
     - name: Setup CMake and Ninja
-      uses: lukka/get-cmake@v3.21.1
+      uses: lukka/get-cmake@v4.2.0
 
     - name: Check GCC Version
       run: g++ --version
