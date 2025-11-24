@@ -5,6 +5,16 @@
 #include <vector>
 #include "ThreadPool.hpp"
 
+TEST(ThreadModeEnumTest, NamesMatchExpectedValues) {
+    EXPECT_EQ(ThreadPool::ThreadMode_name(ThreadPool::ThreadMode::STANDARD), "STANDARD");
+    EXPECT_EQ(ThreadPool::ThreadMode_name(ThreadPool::ThreadMode::PRIORITY), "PRIORITY");
+}
+
+TEST(ThreadSynchronizationEnumTest, NamesMatchExpectedValues) {
+    EXPECT_EQ(ThreadPool::ThreadSynchronization_name(ThreadPool::ThreadSynchronization::ASYNCHRONOUS), "ASYNCHRONOUS");
+    EXPECT_EQ(ThreadPool::ThreadSynchronization_name(ThreadPool::ThreadSynchronization::SYNCHRONOUS), "SYNCHRONOUS");
+}
+
 class ThreadPoolTest : public ::testing::Test {
 protected:
     void SetUp() override {
@@ -182,6 +192,15 @@ TEST_F(ThreadPoolTest, VoidTaskCanBeSynchronizedWhenRequested) {
     future.wait();
 
     EXPECT_EQ(counter.load(), 1);
+}
+
+TEST_F(ThreadPoolTest, VoidTaskAsynchronousFireAndForget) {
+    std::atomic_int counter{0};
+    for (int i = 0; i < 4; ++i) {
+        threadPool->queue(true, [&counter] { counter.fetch_add(1, std::memory_order_relaxed); });
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_EQ(counter.load(), 4);
 }
 
 TEST_F(ThreadPoolTest, AllThreadsRunningWithoutGet) {

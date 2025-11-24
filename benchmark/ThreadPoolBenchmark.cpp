@@ -43,6 +43,28 @@ static void BM_ThreadPool_ExecuteTask(benchmark::State& state) {
 }
 BENCHMARK(BM_ThreadPool_ExecuteTask)->RangeMultiplier(2)->Range(4, 64)->Complexity(benchmark::oAuto);
 
+// Benchmark for enqueueing void tasks (asynchronous fire-and-forget)
+static void BM_ThreadPool_VoidAsync(benchmark::State& state) {
+    ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> pool(state.range(0));
+    for (auto _ : state) {
+        pool.queue([]() {});
+    }
+    state.SetComplexityN(state.range(0));
+}
+BENCHMARK(BM_ThreadPool_VoidAsync)->RangeMultiplier(2)->Range(4, 64)->Complexity(benchmark::oAuto);
+
+// Benchmark for enqueueing void tasks (synchronous with future)
+static void BM_ThreadPool_VoidSync(benchmark::State& state) {
+    ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> pool(state.range(0));
+    for (auto _ : state) {
+        auto fut = pool.queue<ThreadPool::ThreadSynchronization::SYNCHRONOUS>([]() {});
+        benchmark::DoNotOptimize(fut.valid());
+        fut.wait();
+    }
+    state.SetComplexityN(state.range(0));
+}
+BENCHMARK(BM_ThreadPool_VoidSync)->RangeMultiplier(2)->Range(4, 64)->Complexity(benchmark::oAuto);
+
 // Benchmark for handling a burst of tasks
 static void BM_ThreadPool_BurstTasks(benchmark::State& state) {
     ThreadPool::ThreadPool<ThreadPool::ThreadMode::STANDARD> pool(state.range(0));
@@ -70,6 +92,25 @@ static void BM_ThreadPool_PriorityQueueTask(benchmark::State& state) {
     state.SetComplexityN(state.range(0));
 }
 BENCHMARK(BM_ThreadPool_PriorityQueueTask)->RangeMultiplier(2)->Range(4, 64)->Complexity(benchmark::oAuto);
+
+// Benchmark for enum-to-string conversions
+static void BM_ThreadMode_NameLookup(benchmark::State& state) {
+    const auto mode = state.range(0) == 0 ? ThreadPool::ThreadMode::STANDARD : ThreadPool::ThreadMode::PRIORITY;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(ThreadPool::ThreadMode_name(mode));
+    }
+    state.SetComplexityN(1);
+}
+BENCHMARK(BM_ThreadMode_NameLookup)->DenseRange(0, 1);
+
+static void BM_ThreadSynchronization_NameLookup(benchmark::State& state) {
+    const auto sync_mode = state.range(0) == 0 ? ThreadPool::ThreadSynchronization::ASYNCHRONOUS : ThreadPool::ThreadSynchronization::SYNCHRONOUS;
+    for (auto _ : state) {
+        benchmark::DoNotOptimize(ThreadPool::ThreadSynchronization_name(sync_mode));
+    }
+    state.SetComplexityN(1);
+}
+BENCHMARK(BM_ThreadSynchronization_NameLookup)->DenseRange(0, 1);
 
 BENCHMARK_MAIN();
 
