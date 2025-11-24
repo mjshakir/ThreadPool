@@ -13,7 +13,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Install vcpkg
       run: |
@@ -35,7 +35,7 @@ jobs:
         vcpkg integrate install
 
     - name: Setup CMake and Ninja
-      uses: lukka/get-cmake@v3.21.1
+      uses: lukka/get-cmake@v4.2.0
 
     - name: Setup MSVC
       uses: ilammy/msvc-dev-cmd@v1
